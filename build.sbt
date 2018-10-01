@@ -10,7 +10,7 @@ val isStaging = System.getProperty("STAGING") != null
 
 Seq(gitStampSettings: _*)
 
-version in ThisBuild := sys.env.get("SECURITY_MANAGER_VERSION").getOrElse("1.0.3-SNAPSHOT")
+// version in ThisBuild := sys.env.get("SECURITY_MANAGER_VERSION").getOrElse("1.0.3-SNAPSHOT")
 
 scalacOptions ++= Seq(
   "-deprecation",
@@ -164,5 +164,5 @@ publishTo in ThisBuild := {
     Some("releases"  at nexus + "maven-releases/")
 }
 
-credentials += {if(isStaging) Credentials(Path.userHome / ".ivy2" / ".credentialsTest") else Credentials(Path.userHome / ".ivy2" / ".credentials")}
-
+credentials += Credentials { Path.userHome / ".ivy2" / ".credentials" }
+// credentials += {if(isStaging) Credentials(Path.userHome / ".ivy2" / ".credentialsTest") else Credentials(Path.userHome / ".ivy2" / ".credentials")}

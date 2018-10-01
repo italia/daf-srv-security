@@ -1,6 +1,8 @@
 object Versions {
 
-  val hadoopVersion = "2.6.0-cdh5.9.0"
+  lazy val defaultVersion = "1.0.3-SNAPSHOT"
+
+  val hadoopVersion = "2.6.0-cdh5.12.0"
 
   val playVersion = "2.5.14"
 
@@ -8,5 +10,5 @@ object Versions {
 
   val betterFilesVersion = "2.17.1"
 
-  val dafCommonVersion = sys.env.get("COMMON_VERSION").getOrElse("1.0.8-SNAPSHOT")
+  val dafCommonVersion = "1.0.8-SNAPSHOT"
 }
