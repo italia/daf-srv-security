@@ -9,7 +9,7 @@ pipeline {
                 KUBECONFIG = '/var/lib/jenkins/.kube/config.teamdigitale-staging'
             }
             steps {
-                slackSend (message: "BUILD START: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' CHECK THE RESULT ON: https://cd.daf.teamdigitale.it/blue/organizations/jenkinss/daf-srv-security/activity")
+                slackSend (message: "BUILD START: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' CHECK THE RESULT ON: https://cd.daf.teamdigitale.it/blue/organizations/jenkins/daf-srv-security/activity")
                 sh 'sbt clean compile'
                 sh 'sbt docker:publish'
                 sh 'cd kubernetes; sh deploy.sh'

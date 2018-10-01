@@ -6,7 +6,7 @@ import uk.gov.hmrc.gitstamp.GitStampPlugin._
 organization in ThisBuild := "it.gov.daf"
 name := "daf-security-manager"
 
-val isStaging = System.getProperty("STAGING") != null
+val isStaging = sys.env.get("DEPLOY_ENV") == Some("test")
 
 Seq(gitStampSettings: _*)
 
