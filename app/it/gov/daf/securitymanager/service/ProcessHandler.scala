@@ -1,6 +1,7 @@
 package it.gov.daf.securitymanager.service
 
 import cats.data.EitherT
+import play.api.Logger
 import security_manager.yaml.{Error, Success}
 
 import scala.concurrent.Future
@@ -11,9 +12,11 @@ case class SuccessWrapper(success:Success, steps:Int )
 case class ErrorWrapper(error:Error, steps:Int)
 
 
-package object ProcessHandler {
+object ProcessHandler {
 
+  private val logger = Logger("it.gov.daf.securitymanager.service.ProcessHandler")
 
+/*
   def step( tryresp:Try[Future[Either[Error,Success]]] ): EitherT[Future,ErrorWrapper,SuccessWrapper] = step(SuccessWrapper(Success(None,None),0),tryresp)
 
   def step( success:SuccessWrapper, tryresp:Try[Future[Either[Error,Success]]] ):EitherT[Future,ErrorWrapper,SuccessWrapper]={
@@ -42,24 +45,101 @@ package object ProcessHandler {
 
     EitherT(out)
 
+  }*/
+
+
+
+
+  def step(tryresp: => Future[Either[Error,Success]] ): EitherT[Future,ErrorWrapper,SuccessWrapper]  = step(SuccessWrapper(Success(None,None),0),tryresp)
+
+  def step(success:SuccessWrapper, fx: => Future[Either[Error,Success]] ): EitherT[Future,ErrorWrapper,SuccessWrapper] = {
+
+    handleTries(success, fx ){a:Success => val  newStep=success.steps+1
+                                                Right(SuccessWrapper(a, success.steps+1))}
+
   }
 
 
-  def stepOver(tryresp:Try[Future[Either[Error,Success]]] ): EitherT[Future,ErrorWrapper,SuccessWrapper]  = stepOver(SuccessWrapper(Success(None,None),0),tryresp)
+  def stepOver(tryresp: => Future[Either[Error,Success]] ): EitherT[Future,ErrorWrapper,SuccessWrapper]  = stepOver(SuccessWrapper(Success(None,None),0),tryresp)
 
-  def stepOver(success:SuccessWrapper, tryresp:Try[Future[Either[Error,Success]]] ): EitherT[Future,ErrorWrapper,SuccessWrapper] = {
+  def stepOver(success:SuccessWrapper, fx: => Future[Either[Error,Success]] ): EitherT[Future,ErrorWrapper,SuccessWrapper] = {
+
+    handleTries(success, fx ){a:Success => Right(SuccessWrapper(a, success.steps))}
+
+  }
+
+  def stepOverF[S](tryresp: => Future[Either[Error,S]] ): EitherT[Future,ErrorWrapper,S]  = stepOverF(SuccessWrapper(Success(None,None),0),tryresp)
+
+  def stepOverF[S](success:SuccessWrapper, fx: => Future[Either[Error,S]] ): EitherT[Future,ErrorWrapper,S] = {
+
+    handleTries(success, fx ){Right(_)}
+
+  }
+
+
+  private def handleTries[S,T](success:SuccessWrapper, fx: => Future[Either[Error,S]])( ff: S=>Right[ErrorWrapper,T] ): EitherT[Future,ErrorWrapper,T] = {
+
+
+    logger.debug("handleTries step: "+success.steps)
+
+    val out:Future[Either[ErrorWrapper,T]] =
+      Try{
+        fx.map{
+          case Left(l) => val err = ErrorWrapper(l, success.steps)
+                                    logger.warn(err.toString)
+                                    scala.util.Success(Left(err))
+
+          case Right(r) => scala.util.Success( ff(r) )
+
+        }.recover{case e:Throwable=> scala.util.Failure(e)} map {
+          case scala.util.Success(resp) => resp
+          case scala.util.Failure(f) => logger.error(s"Future Failure (step=${success.steps}) :${f.getMessage}",f)
+                                        Left( ErrorWrapper(Error(Option(0),Some(f.getMessage),None),success.steps) )
+        }
+      }match{
+        case scala.util.Success(resp) => resp
+        case scala.util.Failure(f) => logger.error(s"Failure (step=${success.steps}) :${f.getMessage}",f)
+                                      Future.successful{ Left( ErrorWrapper(Error(Option(0),Some(f.getMessage),None),success.steps) )}
+      }
+
+    EitherT(out)
+  }
+
+
+  private def handleTries2[S,T](success:SuccessWrapper, fx: => Future[Either[Error,S]])( ff: S=>Right[ErrorWrapper,T] ): EitherT[Future,ErrorWrapper,T] = {
+
+    val out:Future[Either[ErrorWrapper,T]] =
+        fx.map{
+          case Left(l) => val err = ErrorWrapper(l, success.steps)
+            logger.warn(err.toString)
+            scala.util.Success(Left(err))
+
+          case Right(r) => scala.util.Success( ff(r) )
+
+        }.recover{case e:Throwable=> scala.util.Failure(e)} map {
+          case scala.util.Success(resp) => resp
+          case scala.util.Failure(f) => logger.error(s"Future Failure:${f.getMessage}",f)
+            Left( ErrorWrapper(Error(Option(0),Some(f.getMessage),None),success.steps) )
+        }
+
+    EitherT(out)
+  }
+
+  /*
+  def stepOver(tryresp: => Try[Future[Either[Error,Success]]] ): EitherT[Future,ErrorWrapper,SuccessWrapper]  = stepOver(SuccessWrapper(Success(None,None),0),tryresp)
+
+  def stepOver(success:SuccessWrapper, tryresp: => Try[Future[Either[Error,Success]]] ): EitherT[Future,ErrorWrapper,SuccessWrapper] = {
 
     val out:Future[Either[ErrorWrapper,SuccessWrapper]] = tryresp match{
       case scala.util.Success(resp) => resp.map {
         case Left(l) => Left(ErrorWrapper(l, success.steps))
         case Right(r) => Right(SuccessWrapper(r, success.steps))
       }
-      case scala.util.Failure(f) => Future{Left( ErrorWrapper(Error(Option(0),Some(f.getMessage),None),success.steps) )}
+      case scala.util.Failure(f) => println("ORROREEE"+f);Future{Left( ErrorWrapper(Error(Option(0),Some(f.getMessage),None),success.steps) )}
     }
 
     EitherT(out)
   }
-
 
   def stepOver(resp:Future[Either[Error,Success]] ): EitherT[Future,ErrorWrapper,SuccessWrapper]  = stepOver(SuccessWrapper(Success(None,None),0),resp)
 
@@ -71,10 +151,10 @@ package object ProcessHandler {
     }
 
     EitherT(out)
-  }
+  }*/
 
 
-
+/*
   def stepOverF[S](tryresp:Try[Future[Either[Error,S]]] ): EitherT[Future,ErrorWrapper,S] = stepOverF(SuccessWrapper(Success(None,None),0), tryresp )
 
   def stepOverF[S](success:SuccessWrapper, tryresp:Try[Future[Either[Error,S]]] ): EitherT[Future,ErrorWrapper,S]= {
@@ -102,7 +182,7 @@ package object ProcessHandler {
 
     EitherT(out)
   }
-
+*/
 
   def unwrap(in:Future[Either[ErrorWrapper,SuccessWrapper]]):Future[Either[Error,Success]] = {
     in.map{

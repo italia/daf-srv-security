@@ -34,11 +34,15 @@ private class AppConfig @Inject()(playConfig: Configuration) {
   val smtpTestMail:Option[String] = playConfig.getString("smtp.testMail")
 
   val supersetUrl :Option[String] = playConfig.getString("superset.url")
+  val supersetOpenUrl :Option[String] = playConfig.getString("superset.openUrl")
   val suspersetAdminUser:Option[String] = playConfig.getString("superset.adminUser")
   val suspersetAdminPwd:Option[String] = playConfig.getString("superset.adminPwd")
-  val suspersetOrgAdminRole:Option[String] = playConfig.getString("superset.orgAdminRole")
+  val suspersetOpenDataUser:Option[String] = playConfig.getString("superset.openDataUser")
+  val suspersetOpenDataPwd:Option[String] = playConfig.getString("superset.openDataPwd")
   val suspersetDbUri:Option[String] = playConfig.getString("superset.dbUri")
 
+  val suspersetOrgAdminRole:Option[String] = playConfig.getString("superset.orgAdminRole")
+  val suspersetOpenDataRole: Option[String] = playConfig.getString("superset.openDataRole")
 
   val metabaseUrl :Option[String] = playConfig.getString("metabase.url")
   val metabaseAdminUser :Option[String] = playConfig.getString("metabase.adminUser")
@@ -53,7 +57,7 @@ private class AppConfig @Inject()(playConfig: Configuration) {
   val tokenExpiration :Option[Long] = playConfig.getLong("token.expiration")
   val cookieExpiration :Option[Long] = playConfig.getLong("cookie.expiration")
 
-  val defaultOrganization:Option[String] = playConfig.getString("default.organization")
+  //val defaultOrganization:Option[String] = playConfig.getString("default.organization")
 
   val kyloUrl :Option[String] = playConfig.getString("kylo.url")
   val kyloUser :Option[String] = playConfig.getString("kylo.user")
@@ -64,9 +68,21 @@ private class AppConfig @Inject()(playConfig: Configuration) {
   val impalaServer :Option[String] = playConfig.getString("impala.server")
   val impalaKeyStorePath :Option[String] = playConfig.getString("impala.keyStorePath")
   val impalaKeyStorePwd :Option[String] = playConfig.getString("impala.keyStorePwd")
+  val impalaAdminUser :Option[String] = playConfig.getString("impala.adminUser")
+  val impalaAdminUserPwd :Option[String] = playConfig.getString("impala.adminUserPwd")
+
+  val hiveServer :Option[String] = playConfig.getString("hive.server")
+
+  val localEnv:Option[Boolean] = playConfig.getBoolean("localEnv")
 
   val sftpHostInternal :Option[String] = playConfig.getString("sftp.host.internal")
   val sftphostExternal: Option[String] = playConfig.getString("sftp.host.external")
+
+  val hdfsUser :Option[String] = playConfig.getString("hdfs.user")
+  val hdfsUserPwd :Option[String] = playConfig.getString("hdfs.userPwd")
+
+  val hdfsAdminUser :Option[String] = playConfig.getString("hdfs.adminUser")
+
 
 }
 
@@ -75,10 +91,18 @@ object ConfigReader {
 
   private val config = new AppConfig(Configuration.load(Environment.simple()))
 
-  require(config.defaultOrganization.nonEmpty,"A default organization must be specified")
+  //require(config.defaultOrganization.nonEmpty,"A default organization must be specified")
   require(config.suspersetAdminUser.nonEmpty,"A superset admin must be specified")
   require(config.suspersetAdminPwd.nonEmpty,"A superset admin password must be specified")
+
+  require(config.suspersetOpenDataUser.nonEmpty,"A superset open data user must be specified")
+  require(config.suspersetOpenDataPwd.nonEmpty,"A superset open data user password must be specified")
+
   require(config.suspersetOrgAdminRole.nonEmpty,"A superset organization admin role must be specified")
+  require(config.suspersetOpenDataRole.nonEmpty,"A superset open data role must be specified")
+
+  require(config.supersetOpenUrl.nonEmpty,"A superset open data url must be specified")
+
   require(config.suspersetDbUri.nonEmpty,"A superset db uri must be specified")
   require(config.ckanHost.nonEmpty,"A ckan host must be specified")
   require(config.ckanAdminUser.nonEmpty,"A ckan admin must be specified")
@@ -106,8 +130,16 @@ object ConfigReader {
   require(config.impalaKeyStorePath.nonEmpty,"Impala KeyStore path must be specified")
   require(config.impalaKeyStorePwd.nonEmpty,"Impala KeyStore pwd must be specified")
 
+  require(config.impalaAdminUser.nonEmpty,"Impala admin user must be specified")
+  require(config.impalaAdminUserPwd.nonEmpty,"Impala admin user pwd must be specified")
+
+  require(config.hiveServer.nonEmpty,"Hive server must be specified")
+
   require(config.sftpHostInternal.nonEmpty,"sftpHostInternal must be specified")
   require(config.sftphostExternal.nonEmpty,"sftphostExternal pwd must be specified")
+
+  require(config.hdfsUser.nonEmpty,"hdfs user must be specified")
+  require(config.hdfsUserPwd.nonEmpty,"hdfs user pwd must be specified")
 
 
   //def userIdHeader: String = config.userIdHeader.getOrElse("userid")
@@ -138,9 +170,16 @@ object ConfigReader {
   def smtpSender:String = config.smtpSender.getOrElse("xxx")
 
   def supersetUrl:String = config.supersetUrl.getOrElse("xxx")
+  def supersetOpenUrl:String = config.supersetOpenUrl.get
+
   def suspersetAdminUser:String = config.suspersetAdminUser.get
   def suspersetAdminPwd:String = config.suspersetAdminPwd.get
+  def suspersetOpenDataUser:String = config.suspersetOpenDataUser.get
+  def suspersetOpenDataPwd:String = config.suspersetOpenDataPwd.get
+
   def suspersetOrgAdminRole:String = config.suspersetOrgAdminRole.get
+  def suspersetOpenDataRole:String = config.suspersetOpenDataRole.get
+
   def suspersetDbUri:String = config.suspersetDbUri.get
 
   def metabaseUrl:String = config.metabaseUrl.get
@@ -156,7 +195,7 @@ object ConfigReader {
   def tokenExpiration:Long = config.tokenExpiration.getOrElse(60L*8L)// 8h by default
   def cookieExpiration:Long = config.cookieExpiration.getOrElse(30L)// 30 min by default
 
-  def defaultOrganization:String = config.defaultOrganization.get
+  //def defaultOrganization:String = config.defaultOrganization.get
 
   def kyloUrl :String = config.kyloUrl.get
   def kyloUser :String = config.kyloUser.get
@@ -167,9 +206,20 @@ object ConfigReader {
   def impalaServer :String = config.impalaServer.get
   def impalaKeyStorePath :String = config.impalaKeyStorePath.get
   def impalaKeyStorePwd :String = config.impalaKeyStorePwd.get
+  def impalaAdminUser :String = config.impalaAdminUser.get
+  def impalaAdminUserPwd :String = config.impalaAdminUserPwd.get
+
+  def hiveServer :String = config.hiveServer.get
+
+  def localEnv:Boolean = config.localEnv.getOrElse(false)
 
   def sftpHostInternal :String = config.sftpHostInternal.get
   def sftphostExternal: String = config.sftphostExternal.get
+
+  def hdfsUser:String = config.hdfsUser.get
+  def hdfsUserPwd:String = config.hdfsUserPwd.get
+
+  def hdfsAdminUser:String= config.hdfsAdminUser.getOrElse("")
 
 }
 

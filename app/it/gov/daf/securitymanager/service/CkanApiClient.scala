@@ -20,21 +20,8 @@ class CkanApiClient @Inject()(secInvokeManager: SecuredInvocationManager, cacheW
   implicit val userFormat = Json.format[CkanOrgUser]
   implicit val orgFormat = Json.format[CkanOrg]
 
-  /*
-  private val ckanOrgUserWrites = new Writes[CkanOrgUser] {
-    def writes(ckanOrgUser: CkanOrgUser) = Json.obj(
-      "name" -> ckanOrgUser.name,
-      "capacity" -> ckanOrgUser.role
-    )
-  }
 
-  private implicit val ckanOrgUserReads: Reads[CkanOrgUser] = (
-    (JsPath \ "name").read[String] and
-      (JsPath \ "capacity").read[String]
-    )(CkanOrgUser.apply _)
-  */
-
-  private val ckanAdminLogin = new LoginInfo(ConfigReader.ckanAdminUser, ConfigReader.ckanAdminPwd, LoginClientLocal.CKAN)
+  //private val ckanAdminLogin = new LoginInfo(ConfigReader.ckanAdminUser, ConfigReader.ckanAdminPwd, LoginClientLocal.CKAN)
   private val ckanGeoAdminLogin = new LoginInfo(ConfigReader.ckanGeoAdminUser, ConfigReader.ckanGeoAdminPwd, LoginClientLocal.CKAN_GEO)
 
   def createOrganization(userName:String, userPwd:String, groupCn:String):Future[Either[Error, Success]] = {
@@ -60,9 +47,10 @@ class CkanApiClient @Inject()(secInvokeManager: SecuredInvocationManager, cacheW
 
   }
 
+  /*
   def createOrganizationAsAdmin(groupCn:String):Future[Either[Error, Success]] = {
     createOrganizationAsAdmin(false,groupCn)
-  }
+  }*/
 
   def createOrganizationInGeoCkanAsAdmin(groupCn:String):Future[Either[Error, Success]] = {
     createOrganizationAsAdmin(true,groupCn)
@@ -70,7 +58,7 @@ class CkanApiClient @Inject()(secInvokeManager: SecuredInvocationManager, cacheW
 
   private type CkanInfo = (String,LoginInfo)
   private def selectInfo(isGeoCkan:Boolean):CkanInfo =  if(isGeoCkan) (ConfigReader.ckanGeoHost, ckanGeoAdminLogin)
-                                                        else (ConfigReader.ckanHost,ckanAdminLogin)
+                                                        else throw new Exception("Only ckan geo is permitted")//else (ConfigReader.ckanHost,ckanAdminLogin)
 
   private def createOrganizationAsAdmin(isGeoCkan:Boolean,groupCn:String):Future[Either[Error, Success]] = {
 
@@ -91,6 +79,7 @@ class CkanApiClient @Inject()(secInvokeManager: SecuredInvocationManager, cacheW
 
 
     def serviceInvoke(cookie: String, wsClient: WSClient): Future[WSResponse] = {
+      println("XXX_>"+ckaninfo._1 + "/api/3/action/organization_create" + "  Cookie:"+cookie)
       wsClient.url(ckaninfo._1 + "/api/3/action/organization_create").withHeaders("Cookie" -> cookie).post(jsonRequest)
     }
 
@@ -98,9 +87,10 @@ class CkanApiClient @Inject()(secInvokeManager: SecuredInvocationManager, cacheW
 
   }
 
+  /*
   def deleteOrganization(groupCn:String):Future[Either[Error, Success]] = {
     deleteOrganization(false,groupCn)
-  }
+  }*/
 
   def deleteOrganizationInGeoCkan(groupCn:String):Future[Either[Error, Success]] = {
     deleteOrganization(true,groupCn)
@@ -124,6 +114,7 @@ class CkanApiClient @Inject()(secInvokeManager: SecuredInvocationManager, cacheW
 
   }
 
+  /*
   def deleteUser(userUid:String):Future[Either[Error, Success]] = {
 
     val jsonRequest: JsValue = Json.parse( s"""{"id" : "$userUid"}""" )
@@ -138,11 +129,12 @@ class CkanApiClient @Inject()(secInvokeManager: SecuredInvocationManager, cacheW
 
     secInvokeManager.manageRestServiceCall(ckanAdminLogin, serviceInvoke, 200) map ( evaluateResult(_,"User deleted") )
 
-  }
+  }*/
 
+  /*
   def purgeOrganization(groupCn:String):Future[Either[Error, Success]] = {
     purgeOrganization(false, groupCn)
-  }
+  }*/
 
   def purgeOrganizationInGeoCkan(groupCn:String):Future[Either[Error, Success]] = {
     purgeOrganization(true, groupCn)
@@ -166,8 +158,44 @@ class CkanApiClient @Inject()(secInvokeManager: SecuredInvocationManager, cacheW
 
   }
 
+  /*
+    def putUserInOrganization(loggedUserName:String, userName:String, ckanOrg:CkanOrg):Future[Either[Error, Success]] = {
 
-  def putUserInOrganization(loggedUserName:String, userName:String, ckanOrg:CkanOrg):Future[Either[Error, Success]] = {
+      val updatedCkanOrg = ckanOrg.copy( users=ckanOrg.users :+ CkanOrgUser(userName,"admin") )
+
+      val jsonRequest: JsValue = Json.toJson(updatedCkanOrg)
+
+      Logger.logger.debug("putUsersInOrganization request: " + jsonRequest.toString())
+
+
+      def serviceInvoke(cookie: String, wsClient: WSClient): Future[WSResponse] = {
+        wsClient.url(ConfigReader.ckanHost + "/api/3/action/organization_patch?id=" + updatedCkanOrg.name).withHeaders("Cookie" -> cookie).post(jsonRequest)
+      }
+
+      val ckanLogin =  new LoginInfo(loggedUserName, cacheWrapper.getPwd(loggedUserName).get , "ckan")
+      secInvokeManager.manageRestServiceCall( ckanLogin, serviceInvoke, 200) map ( evaluateResult(_,"User added") )
+
+    }
+
+
+    def putUserInOrganizationAsAdmin(userName:String, ckanOrg:CkanOrg):Future[Either[Error, Success]] = {
+
+      val updatedCkanOrg = ckanOrg.copy( users=ckanOrg.users :+ CkanOrgUser(userName,"admin") )
+
+      val jsonRequest: JsValue = Json.toJson(updatedCkanOrg)
+
+      Logger.logger.debug("putUsersInOrganization request: " + jsonRequest.toString())
+
+
+      def serviceInvoke(cookie: String, wsClient: WSClient): Future[WSResponse] = {
+        wsClient.url(ConfigReader.ckanHost + "/api/3/action/organization_patch?id=" + updatedCkanOrg.name).withHeaders("Cookie" -> cookie).post(jsonRequest)
+      }
+
+      secInvokeManager.manageRestServiceCall( ckanAdminLogin, serviceInvoke, 200) map ( evaluateResult(_,"User added") )
+
+    }*/
+
+  def putUserInOrganizationAsAdminInGeoCkan(userName:String, ckanOrg:CkanOrg):Future[Either[Error, Success]] = {
 
     val updatedCkanOrg = ckanOrg.copy( users=ckanOrg.users :+ CkanOrgUser(userName,"admin") )
 
@@ -177,31 +205,14 @@ class CkanApiClient @Inject()(secInvokeManager: SecuredInvocationManager, cacheW
 
 
     def serviceInvoke(cookie: String, wsClient: WSClient): Future[WSResponse] = {
-      wsClient.url(ConfigReader.ckanHost + "/api/3/action/organization_patch?id=" + updatedCkanOrg.name).withHeaders("Cookie" -> cookie).post(jsonRequest)
+      wsClient.url(ConfigReader.ckanGeoHost + "/api/3/action/organization_patch?id=" + updatedCkanOrg.name).withHeaders("Cookie" -> cookie).post(jsonRequest)
     }
 
-    val ckanLogin =  new LoginInfo(loggedUserName, cacheWrapper.getPwd(loggedUserName).get , "ckan")
-    secInvokeManager.manageRestServiceCall( ckanLogin, serviceInvoke, 200) map ( evaluateResult(_,"User added") )
+    secInvokeManager.manageRestServiceCall( ckanGeoAdminLogin, serviceInvoke, 200) map ( evaluateResult(_,"User added") )
 
   }
 
-  def putUserInOrganizationAsAdmin(userName:String, ckanOrg:CkanOrg):Future[Either[Error, Success]] = {
-
-    val updatedCkanOrg = ckanOrg.copy( users=ckanOrg.users :+ CkanOrgUser(userName,"admin") )
-
-    val jsonRequest: JsValue = Json.toJson(updatedCkanOrg)
-
-    Logger.logger.debug("putUsersInOrganization request: " + jsonRequest.toString())
-
-
-    def serviceInvoke(cookie: String, wsClient: WSClient): Future[WSResponse] = {
-      wsClient.url(ConfigReader.ckanHost + "/api/3/action/organization_patch?id=" + updatedCkanOrg.name).withHeaders("Cookie" -> cookie).post(jsonRequest)
-    }
-
-    secInvokeManager.manageRestServiceCall( ckanAdminLogin, serviceInvoke, 200) map ( evaluateResult(_,"User added") )
-
-  }
-
+  /*
   def removeUserInOrganizationAsAdmin(userName:String, ckanOrg:CkanOrg):Future[Either[Error, Success]] = {
 
     val updatedCkanOrg = ckanOrg.copy( users=ckanOrg.users.filter(c=>(!c.name.equals(userName))) )
@@ -217,9 +228,26 @@ class CkanApiClient @Inject()(secInvokeManager: SecuredInvocationManager, cacheW
 
     secInvokeManager.manageRestServiceCall( ckanAdminLogin, serviceInvoke, 200) map ( evaluateResult(_,"User removed") )
 
+  }*/
+
+  def removeUserInOrganizationAsAdminInGeoCkan(userName:String, ckanOrg:CkanOrg):Future[Either[Error, Success]] = {
+
+    val updatedCkanOrg = ckanOrg.copy( users=ckanOrg.users.filter(c=>(!c.name.equals(userName))) )
+
+    val jsonRequest: JsValue = Json.toJson(updatedCkanOrg)
+
+    Logger.logger.debug("removeUsersInOrganization request: " + jsonRequest.toString())
+
+
+    def serviceInvoke(cookie: String, wsClient: WSClient): Future[WSResponse] = {
+      wsClient.url(ConfigReader.ckanGeoHost + "/api/3/action/organization_patch?id=" + updatedCkanOrg.name).withHeaders("Cookie" -> cookie).post(jsonRequest)
+    }
+
+    secInvokeManager.manageRestServiceCall( ckanGeoAdminLogin, serviceInvoke, 200) map ( evaluateResult(_,"User removed") )
+
   }
 
-
+  /*
   def getOrganization(loggedUserName:String, groupCn:String):Future[Either[Error, CkanOrg]] = {
 
     Logger.logger.info("getUsersOfOrganization groupCn: " + groupCn)
@@ -235,9 +263,9 @@ class CkanApiClient @Inject()(secInvokeManager: SecuredInvocationManager, cacheW
 
     secInvokeManager.manageRestServiceCall(ckanLogin, serviceInvoke, 200) map getOrgFromJson
 
-  }
+  }*/
 
-
+/*
   def getOrganizationAsAdmin( groupCn:String):Future[Either[Error, CkanOrg]] = {
 
     Logger.logger.info("getUsersOfOrganization groupCn: " + groupCn)
@@ -249,6 +277,20 @@ class CkanApiClient @Inject()(secInvokeManager: SecuredInvocationManager, cacheW
     }
 
     secInvokeManager.manageRestServiceCall(ckanAdminLogin, serviceInvoke, 200) map getOrgFromJson
+
+  }*/
+
+  def getOrganizationAsAdminInGeoCkan( groupCn:String):Future[Either[Error, CkanOrg]] = {
+
+    Logger.logger.info("getUsersOfOrganization groupCn: " + groupCn)
+
+
+    def serviceInvoke( cookie: String, wsClient: WSClient ):Future[WSResponse] ={
+      val url = ConfigReader.ckanGeoHost  + "/api/3/action/organization_show?id=" + groupCn
+      wsClient.url(url).withHeaders("Cookie" -> cookie).get
+    }
+
+    secInvokeManager.manageRestServiceCall(ckanGeoAdminLogin, serviceInvoke, 200) map getOrgFromJson
 
   }
 

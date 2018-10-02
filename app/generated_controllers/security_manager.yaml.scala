@@ -29,9 +29,15 @@ import it.gov.daf.securitymanager.service.utilities.ConfigReader
 import it.gov.daf.securitymanager.service.IntegrationService
 import it.gov.daf.ftp.SftpHandler
 import it.gov.daf.common.sso.common.CredentialManager
-import it.gov.daf.securitymanager.service.utilities.RequestContext._
+import it.gov.daf.common.utils.RequestContext._
 import it.gov.daf.common.sso.common.CacheWrapper
 import it.gov.daf.securitymanager.service.utilities.Utils
+import it.gov.daf.securitymanager.service.ProfilingService
+import cats.data.EitherT
+import it.gov.daf.sso
+import cats.implicits._
+import it.gov.daf.common.sso.common.{Editor,SysAdmin,Admin,Viewer}
+import scala.collection.immutable.StringLike
 
 /**
  * This controller is re-generated after each change in the specification.
@@ -40,7 +46,7 @@ import it.gov.daf.securitymanager.service.utilities.Utils
 
 package security_manager.yaml {
     // ----- Start of unmanaged code area for package Security_managerYaml
-                            
+                                            
     // ----- End of unmanaged code area for package Security_managerYaml
     class Security_managerYaml @Inject() (
         // ----- Start of unmanaged code area for injections Security_managerYaml
@@ -49,7 +55,8 @@ package security_manager.yaml {
                                            apiClientIPA:ApiClientIPA,
                                            registrationService:RegistrationService,
                                            integrationService:IntegrationService,
-                                            cacheWrapper: CacheWrapper,
+                                           profilingService:ProfilingService,
+                                           cacheWrapper: CacheWrapper,
         // ----- End of unmanaged code area for injections Security_managerYaml
         val messagesApi: MessagesApi,
         lifecycle: ApplicationLifecycle,
@@ -58,6 +65,16 @@ package security_manager.yaml {
         // ----- Start of unmanaged code area for constructor Security_managerYaml
 
       Authentication(configuration, playSessionStore)
+
+      private def testWorkgroupAuthorization(parentGroups:Option[Seq[String]]):Either[Error,Success]={
+        if(parentGroups.isEmpty || !parentGroups.get.contains(sso.WORKGROUPS_GROUP))
+          Left(Error(Option(1), Some("The group is not a workgroup"), None))
+        else if( CredentialManager.isDafSysAdmin(currentRequest) || CredentialManager.isOrgsAdmin(currentRequest,parentGroups.get) )
+          Right(Success(Some("ok"), Some("ok")) )
+        else
+          Left(Error(Option(1), Some("Admin permissions required"), None))
+      }
+
 
         // ----- End of unmanaged code area for constructor Security_managerYaml
         val registrationconfirm = registrationconfirmAction { (token: String) =>  
@@ -73,7 +90,7 @@ package security_manager.yaml {
         val createDAFuser = createDAFuserAction { (user: IpaUser) =>  
             // ----- Start of unmanaged code area for action  Security_managerYaml.createDAFuser
             execInContext[Future[CreateDAFuserType[T] forSome { type T }]] ("createDAFuser"){ () =>
-            if (!CredentialManager.isDafAdmin(currentRequest))
+            if (!CredentialManager.isDafSysAdmin(currentRequest))
               CreateDAFuser500(Error(Option(1), Some("Admin permissions required"), None))
             else
               registrationService.checkUserNcreate(user) flatMap {
@@ -83,6 +100,21 @@ package security_manager.yaml {
           }
           //def a() = {registrationService.checkUserNcreate(user)}
             // ----- End of unmanaged code area for action  Security_managerYaml.createDAFuser
+        }
+        val getDAFGroupsInfo = getDAFGroupsInfoAction { (groups: StringListElem) =>  
+            // ----- Start of unmanaged code area for action  Security_managerYaml.getDAFGroupsInfo
+            execInContext[Future[GetDAFGroupsInfoType[T] forSome { type T }]] ("getDAFGroupsInfo"){ () =>
+
+              if(groups.length>20)
+                GetDAFGroupsInfo500(Error(Option(1), Some("Max 20 entries permitted"), None))
+              else
+                apiClientIPA.groupsInfo(groups) flatMap {
+                  case Right(success) => GetDAFGroupsInfo200(success)
+                  case Left(err) => GetDAFGroupsInfo500(err)
+                }
+
+            }
+            // ----- End of unmanaged code area for action  Security_managerYaml.getDAFGroupsInfo
         }
         val resetpwdconfirm = resetpwdconfirmAction { (resetinfo: ConfirmResetPwdPayload) =>  
             // ----- Start of unmanaged code area for action  Security_managerYaml.resetpwdconfirm
@@ -116,10 +148,39 @@ package security_manager.yaml {
             //CreateIPAgroup500(Error(Option(1),Some("The service is deprecated"),None))
             // ----- End of unmanaged code area for action  Security_managerYaml.createIPAgroup
         }
-        val createDAForganization = createDAForganizationAction { (organization: DafOrg) =>  
+        val userdelDAFworkgroup = userdelDAFworkgroupAction { (payload: UserAndGroup) =>  
+            // ----- Start of unmanaged code area for action  Security_managerYaml.userdelDAFworkgroup
+            execInContext[Future[UserdelDAFworkgroupType[T] forSome { type T }]] ("userdelDAFworkgroup") { () =>
+
+            //val credentials = CredentialManager.readCredentialFromRequest(currentRequest)
+
+              val result = for{
+                wrk <- EitherT( apiClientIPA.showGroup(payload.groupCn) )
+                a <- EitherT( Future.successful(testWorkgroupAuthorization(wrk.memberof_group)) )
+                b <- EitherT( integrationService.removeUserFromWorkgroup(payload.groupCn, payload.userId) )
+              } yield b
+
+              result.value flatMap {
+                case Right(success) => UserdelDAFworkgroup200(success)
+                case Left(err) => UserdelDAFworkgroup500(err)
+              }
+
+
+              /*
+            if (CredentialManager.isOrgAdmin(currentRequest, payload.groupCn) || CredentialManager.isDafSysAdmin(currentRequest))
+              integrationService.removeUserFromWorkgroup(payload.groupCn, payload.userId) flatMap {
+                case Right(success) => UserdelDAFworkgroup200(success)
+                case Left(err) => UserdelDAFworkgroup500(err)
+              }
+            else
+              UserdelDAFworkgroup500(Error(Option(1), Some("Permissions required"), None))*/
+          }
+            // ----- End of unmanaged code area for action  Security_managerYaml.userdelDAFworkgroup
+        }
+        val createDAForganization = createDAForganizationAction { (organization: DafGroup) =>  
             // ----- Start of unmanaged code area for action  Security_managerYaml.createDAForganization
             execInContext[Future[CreateDAForganizationType[T] forSome { type T }]] ("createDAForganization") { () =>
-            if (!CredentialManager.isDafAdmin(currentRequest))
+            if (!CredentialManager.isDafSysAdmin(currentRequest))
               CreateDAForganization500(Error(Option(1), Some("Admin permissions required"), None))
             else
               integrationService.createDafOrganization(organization) flatMap {
@@ -134,20 +195,31 @@ package security_manager.yaml {
             execInContext[Future[FindIpauserByNameType[T] forSome { type T }]]("findIpauserByName") { () =>
             val credentials = CredentialManager.readCredentialFromRequest(currentRequest)
 
-            apiClientIPA.findUserByUid(userName) flatMap {
-              case Right(success) =>  if (success.uid == credentials.username || CredentialManager.isDafAdmin(currentRequest))
-                                        FindIpauserByName200(success)
-                                      else
-                                        FindIpauserByName500(Error(Option(1), Some("Permissions required"), None))
-              case Left(err) => FindIpauserByName500(err)
-            }
+              if (userName == credentials.username || CredentialManager.isDafSysAdmin(currentRequest) || CredentialManager.getUserAdminGroups(currentRequest).nonEmpty)
+                apiClientIPA.findUser(Left(userName)) flatMap {
+                  case Right(success) =>  FindIpauserByName200(success)
+                  case Left(err) => FindIpauserByName500(err)
+                }
+              else
+                FindIpauserByName500(Error(Option(1), Some("Permissions required"), None))
+
           }
             // ----- End of unmanaged code area for action  Security_managerYaml.findIpauserByName
+        }
+        val listDAFworkgroup = listDAFworkgroupAction {  _ =>  
+            // ----- Start of unmanaged code area for action  Security_managerYaml.listDAFworkgroup
+            execInContext[Future[ListDAFworkgroupType[T] forSome { type T }]] ("listDAFworkgroup"){ () =>
+            apiClientIPA.workgroupList() flatMap {
+              case Right(success) => ListDAFworkgroup200(StringList(success))
+              case Left(err) => ListDAFworkgroup500(err)
+            }
+          }
+            // ----- End of unmanaged code area for action  Security_managerYaml.listDAFworkgroup
         }
         val deleteDAForganization = deleteDAForganizationAction { (orgName: String) =>  
             // ----- Start of unmanaged code area for action  Security_managerYaml.deleteDAForganization
             execInContext[Future[DeleteDAForganizationType[T] forSome { type T }]] ("deleteDAForganization"){ () =>
-            if (!CredentialManager.isDafAdmin(currentRequest))
+            if (!CredentialManager.isDafSysAdmin(currentRequest))
               DeleteDAForganization500(Error(Option(1), Some("Admin permissions required"), None))
             else
               integrationService.deleteDafOrganization(orgName) flatMap {
@@ -186,6 +258,21 @@ package security_manager.yaml {
               DelUserToIPAgroup500(Error(Option(1),Some("The service is deprecated"),None))
             // ----- End of unmanaged code area for action  Security_managerYaml.delUserToIPAgroup
         }
+        val deleteACLPermission = deleteACLPermissionAction { input: (String, AclPermissionDel) =>
+            val (datasetName, permissionDel) = input
+            // ----- Start of unmanaged code area for action  Security_managerYaml.deleteACLPermission
+            execInContext[Future[DeleteACLPermissionType[T] forSome {type T}]]("deleteACLPermission") { () =>
+
+              profilingService.deletePermissionFromACL( datasetName,
+                permissionDel.groupName,
+                permissionDel.groupType) flatMap {
+                case Right(success) => DeleteACLPermission200(success)
+                case Left(err) => DeleteACLPermission500(err)
+              }
+
+            }
+            // ----- End of unmanaged code area for action  Security_managerYaml.deleteACLPermission
+        }
         val createSupersetTable = createSupersetTableAction { (payload: SupersetTable) =>  
             // ----- Start of unmanaged code area for action  Security_managerYaml.createSupersetTable
             execInContext[Future[CreateSupersetTableType[T] forSome { type T }]] ("createSupersetTable"){ () =>
@@ -200,38 +287,96 @@ package security_manager.yaml {
             val (uid, user) = input
             // ----- Start of unmanaged code area for action  Security_managerYaml.updateDAFuser
             execInContext[Future[UpdateDAFuserType[T] forSome { type T }]] ("updateDAFuser"){ () =>
-            if (!CredentialManager.isDafAdmin(currentRequest))
-              UpdateDAFuser500(Error(Option(1), Some("Admin permissions required"), None))
-            else
-              registrationService.updateUser(input._1, input._2.givenname, input._2.sn, input._2.role) flatMap {
+
+              val inRoles: Set[String] = user.rolesToAdd.get.toSet.union(user.rolesToDelete.get.toSet)
+              val inRoleOrgs: Set[String] = inRoles.map(
+                _.toString.stripPrefix(Admin.toString).stripPrefix(Editor.toString).stripPrefix(Viewer.toString)
+                ).filter(_!=SysAdmin.toString)
+
+            if (  CredentialManager.isDafSysAdmin(currentRequest) ||
+                  (CredentialManager.isAdminOfAllThisOrgs(currentRequest,inRoleOrgs.toSeq) && (!inRoles.contains(SysAdmin.toString)) && user.givenname.isEmpty && user.sn.isEmpty) ||
+                  (CredentialManager.readCredentialFromRequest(currentRequest).username.equals(uid) && user.rolesToDelete.isEmpty && user.rolesToDelete.isEmpty)
+            )
+              registrationService.updateUser(uid, user) flatMap {
                 case Right(success) => UpdateDAFuser200(success)
                 case Left(err) => UpdateDAFuser500(err)
               }
+            else
+              UpdateDAFuser500(Error(Option(1), Some("Admin permissions required"), None))
           }
             // ----- End of unmanaged code area for action  Security_managerYaml.updateDAFuser
         }
+        val setACLPermission = setACLPermissionAction { input: (String, AclPermission) =>
+            val (datasetName, aclPermission) = input
+            // ----- Start of unmanaged code area for action  Security_managerYaml.setACLPermission
+            execInContext[Future[SetACLPermissionType[T] forSome {type T}]]("setACLPermission") { () =>
+
+              profilingService.setACLPermission(datasetName,
+                aclPermission.groupName,
+                aclPermission.groupType,
+                aclPermission.permission) flatMap {
+                case Right(success) => SetACLPermission200(success)
+                case Left(err) => SetACLPermission500(err)
+              }
+
+            }
+            // ----- End of unmanaged code area for action  Security_managerYaml.setACLPermission
+        }
+        val getDatasetACL = getDatasetACLAction { (datasetName: String) =>  
+            // ----- Start of unmanaged code area for action  Security_managerYaml.getDatasetACL
+            execInContext[Future[GetDatasetACLType[T] forSome {type T}]]("getDatasetACL") { () =>
+
+            profilingService.getPermissions(datasetName) flatMap {
+              case Right(Some(success)) => GetDatasetACL200(success)
+              case Right(None) => GetDatasetACL500(Error(Option(1),Some("No ACL founded"),None))
+              case Left(err) => GetDatasetACL500(err)
+            }
+
+          }
+            // ----- End of unmanaged code area for action  Security_managerYaml.getDatasetACL
+        }
         val token = tokenAction {  _ =>  
             // ----- Start of unmanaged code area for action  Security_managerYaml.token
-            //val credentials = WebServiceUtil.readCredentialFromRequest(currentRequest)
-            //cacheWrapper.deleteCredentials(credentials._1.get)
-            //cacheWrapper.putCredentials(credentials._1.get,credentials._2.get)
-          execInContext[Future[TokenType[T] forSome { type T }]] ("token"){ () =>
-            Token200(Authentication.getStringToken(currentRequest, ConfigReader.tokenExpiration).getOrElse(""))
+            execInContext[Future[TokenType[T] forSome { type T }]] ("token"){ () =>
+
+              if( CredentialManager.readCredentialFromRequest(currentRequest).groups.contains(sso.OPEN_DATA_GROUP) )
+                Token200(Authentication.getStringToken(currentRequest, ConfigReader.tokenExpiration).getOrElse(""))
+              else
+                Token500(Error(Option(1), Some("Not a DAF user"), None))
+
           }
             // ----- End of unmanaged code area for action  Security_managerYaml.token
         }
         val showipagroup = showipagroupAction { (cn: String) =>  
             // ----- Start of unmanaged code area for action  Security_managerYaml.showipagroup
             execInContext[Future[ShowipagroupType[T] forSome { type T }]] ("showipagroup"){ () =>
+
             val credentials = CredentialManager.readCredentialFromRequest(currentRequest)
 
-            if (credentials.groups.contains(cn) || CredentialManager.isDafAdmin(currentRequest))
-              apiClientIPA.showGroup(cn) flatMap {
+
+              def checkPermissions(parentOrg:Option[String],group:IpaGroup):Future[Either[Error,Success]] = {
+
+                if( CredentialManager.isBelongingToOrgAs(currentRequest,cn).nonEmpty ||
+                    CredentialManager.isDafSysAdmin(currentRequest) || cn.equals(sso.OPEN_DATA_GROUP) ||
+                    (parentOrg.nonEmpty && CredentialManager.isBelongingToOrgAs(currentRequest, parentOrg.get).nonEmpty) )
+                  Future.successful( Right(Success(Some("ok"), Some("ok"))) )
+                else
+                  Future.successful( Left(Error(Option(1), Some("Permissions required"), None)) )
+
+              }
+
+
+              val result = for {
+                group <- EitherT( apiClientIPA.showGroup(cn) )
+                parentOrg <- EitherT( apiClientIPA.getWorkgroupOrganization(group) )
+                a <-  EitherT( checkPermissions(parentOrg,group) )
+              } yield group
+
+              result.value flatMap{
                 case Right(success) => Showipagroup200(success)
                 case Left(err) => Showipagroup500(err)
               }
-            else
-              Showipagroup500(Error(Option(1), Some("Admin permissions required"), None))
+
           }
             // ----- End of unmanaged code area for action  Security_managerYaml.showipagroup
         }
@@ -240,8 +385,7 @@ package security_manager.yaml {
             execInContext[Future[UseraddDAForganizationType[T] forSome { type T }]] ("useraddDAForganization"){ () =>
             val credentials = CredentialManager.readCredentialFromRequest(currentRequest)
 
-            if ((credentials.groups.contains(payload.groupCn) && CredentialManager.isDafEditor(currentRequest)) ||
-              CredentialManager.isDafAdmin(currentRequest))
+            if( CredentialManager.isOrgAdmin(currentRequest,payload.groupCn) || CredentialManager.isDafSysAdmin(currentRequest) )
               integrationService.addUserToOrganization(payload.groupCn, payload.userId) flatMap {
                 case Right(success) => UseraddDAForganization200(success)
                 case Left(err) => UseraddDAForganization500(err)
@@ -256,9 +400,9 @@ package security_manager.yaml {
             execInContext[Future[FindIpauserByMailType[T] forSome { type T }]] ("findIpauserByMail"){ () =>
             val credentials = CredentialManager.readCredentialFromRequest(currentRequest)
 
-            apiClientIPA.findUserByMail(mail) flatMap {
+            apiClientIPA.findUser(Right(mail)) flatMap {
 
-              case Right(success) =>  if (success.uid == credentials.username || CredentialManager.isDafAdmin(currentRequest))
+              case Right(success) =>  if (success.uid == credentials.username || CredentialManager.isDafSysAdmin(currentRequest))
                                         FindIpauserByMail200(success)
                                       else
                                         FindIpauserByMail500(Error(Option(1), Some("Permissions required"), None))
@@ -268,33 +412,45 @@ package security_manager.yaml {
           }
             // ----- End of unmanaged code area for action  Security_managerYaml.findIpauserByMail
         }
-        val createDefaultDAForganization = createDefaultDAForganizationAction { (organization: DafOrg) =>  
-            // ----- Start of unmanaged code area for action  Security_managerYaml.createDefaultDAForganization
-            execInContext[Future[CreateDefaultDAForganizationType[T] forSome { type T }]] ("createDefaultDAForganization"){ () =>
-            if (!CredentialManager.isDafAdmin(currentRequest))
-              CreateDefaultDAForganization500(Error(Option(1), Some("Admin permissions required"), None))
-            else
-              integrationService.createDefaultDafOrganization(organization.predefinedUserPwd) flatMap {
-                case Right(success) => CreateDefaultDAForganization200(success)
-                case Left(err) => CreateDefaultDAForganization500(err)
-              }
+        val deleteDAFworkgroup = deleteDAFworkgroupAction { (wrkName: String) =>  
+            // ----- Start of unmanaged code area for action  Security_managerYaml.deleteDAFworkgroup
+            execInContext[Future[DeleteDAFworkgroupType[T] forSome { type T }]] ("deleteDAFworkgroup"){ () =>
+
+
+            val result = for{
+              wrk <- EitherT( apiClientIPA.showGroup(wrkName) )
+              a <- EitherT( Future.successful(testWorkgroupAuthorization(wrk.memberof_group)) )
+              b <- EitherT( integrationService.deleteDafWorkgroup(wrkName) )
+            } yield b
+
+            result.value flatMap {
+              case Right(success) => DeleteDAFworkgroup200(success)
+              case Left(err) => DeleteDAFworkgroup500(err)
+            }
+
+
           }
-            // ----- End of unmanaged code area for action  Security_managerYaml.createDefaultDAForganization
+            // ----- End of unmanaged code area for action  Security_managerYaml.deleteDAFworkgroup
         }
-        val sftp = sftpAction { (path_to_create: String) =>  
+        val sftp = sftpAction { input: (String, String) =>
+            val (path_to_create, orgName) = input
             // ----- Start of unmanaged code area for action  Security_managerYaml.sftp
             execInContext[Future[SftpType[T] forSome { type T }]] ("sftp"){ () =>
             val credentials = Utils.getCredentials(currentRequest, cacheWrapper )
 
-            if (CredentialManager.isDafAdmin(currentRequest) || CredentialManager.isDafEditor(currentRequest)) {
+            if (CredentialManager.isDafSysAdmin(currentRequest) ||
+              CredentialManager.isOrgAdmin(currentRequest, orgName) ||
+            CredentialManager.isOrgEditor(currentRequest, orgName)) {
               val result = credentials.flatMap { crd =>
                 val sftpInternal = new SftpHandler(crd.username, crd.password, ConfigReader.sftpHostInternal)
                 logger.debug("username --> " + crd.username  + " creating path " + ConfigReader.sftpHostInternal)
                 val resultInternal = sftpInternal.mkdir(path_to_create)
+                logger.debug(s"result internal sftp: $resultInternal")
                 logger.debug("path created into daf.teamdigitale.it")
                 val sftpExternal = new SftpHandler(crd.username, crd.password, ConfigReader.sftphostExternal)
                 logger.debug("username --> " + crd.username  + " creating path " + ConfigReader.sftphostExternal)
                 val resultExternal = sftpExternal.mkdir(path_to_create)
+                logger.debug(s"resutl external sftp: $resultExternal")
                 logger.debug("path created into edge2")
                 resultExternal
               }
@@ -335,7 +491,7 @@ package security_manager.yaml {
             // ----- Start of unmanaged code area for action  Security_managerYaml.listDAForganization
             execInContext[Future[ListDAForganizationType[T] forSome { type T }]] ("listDAForganization"){ () =>
             apiClientIPA.organizationList() flatMap {
-              case Right(success) => ListDAForganization200(OrgList(success))
+              case Right(success) => ListDAForganization200(StringList(success))
               case Left(err) => ListDAForganization500(err)
             }
           }
@@ -344,7 +500,7 @@ package security_manager.yaml {
         val deleteDAFuser = deleteDAFuserAction { (userName: String) =>  
             // ----- Start of unmanaged code area for action  Security_managerYaml.deleteDAFuser
             execInContext[Future[DeleteDAFuserType[T] forSome { type T }]] ("deleteDAFuser"){ () =>
-            if (!CredentialManager.isDafAdmin(currentRequest))
+            if (!CredentialManager.isDafSysAdmin(currentRequest))
               DeleteDAFuser500(Error(Option(1), Some("Admin permissions required"), None))
             else
               registrationService.deleteUser(userName) flatMap {
@@ -359,8 +515,7 @@ package security_manager.yaml {
             execInContext[Future[UserdelDAForganizationType[T] forSome { type T }]] ("userdelDAForganization"){ () =>
             val credentials = CredentialManager.readCredentialFromRequest(currentRequest)
 
-            if ((credentials.groups.contains(payload.groupCn) && CredentialManager.isDafEditor(currentRequest)) ||
-              CredentialManager.isDafAdmin(currentRequest))
+            if (CredentialManager.isOrgAdmin(currentRequest,payload.groupCn) || CredentialManager.isDafSysAdmin(currentRequest))
               integrationService.removeUserFromOrganization(payload.groupCn, payload.userId) flatMap {
                 case Right(success) => UserdelDAForganization200(success)
                 case Left(err) => UserdelDAForganization500(err)
@@ -383,6 +538,75 @@ package security_manager.yaml {
           }
             // ----- End of unmanaged code area for action  Security_managerYaml.registrationrequest
         }
+        val useraddDAFworkgroup = useraddDAFworkgroupAction { (payload: UserAndGroup) =>  
+            // ----- Start of unmanaged code area for action  Security_managerYaml.useraddDAFworkgroup
+            execInContext[Future[UseraddDAFworkgroupType[T] forSome { type T }]] ("useraddDAFworkgroup") { () =>
+
+            val result = for{
+              wrk <- EitherT( apiClientIPA.showGroup(payload.groupCn) )
+              a <- EitherT( Future.successful(testWorkgroupAuthorization(wrk.memberof_group)) )
+              b <- EitherT( integrationService.addUserToWorkgroup(payload.groupCn, payload.userId) )
+            } yield b
+
+            result.value flatMap {
+              case Right(success) => UseraddDAFworkgroup200(success)
+              case Left(err) => UseraddDAFworkgroup500(err)
+            }
+
+          }
+            // ----- End of unmanaged code area for action  Security_managerYaml.useraddDAFworkgroup
+        }
+        val createDAFworkgroup = createDAFworkgroupAction { input: (String, DafGroup) =>
+            val (orgName, workgroup) = input
+            // ----- Start of unmanaged code area for action  Security_managerYaml.createDAFworkgroup
+            execInContext[Future[CreateDAFworkgroupType[T] forSome { type T }]] ("createDAFworkgroup") { () =>
+            if (!(CredentialManager.isDafSysAdmin(currentRequest) || CredentialManager.isOrgAdmin(currentRequest,orgName)))
+              CreateDAFworkgroup500(Error(Option(1), Some("Admin permissions required"), None))
+            else
+              integrationService.createDafWorkgroup(workgroup,orgName) flatMap {
+                case Right(success) => CreateDAFworkgroup200(success)
+                case Left(err) => CreateDAFworkgroup500(err)
+              }
+          }
+            // ----- End of unmanaged code area for action  Security_managerYaml.createDAFworkgroup
+        }
+    
+     // Dead code for absent methodSecurity_managerYaml.listDAFusers
+     /*
+            // ----- Start of unmanaged code area for action  Security_managerYaml.listDAFusers
+            NotImplementedYet
+            /*
+            execInContext[Future[ListDAFusersType[T] forSome { type T }]] ("listDAFusers"){ () =>
+
+              val findingGroup =  if( CredentialManager.isDafSysAdmin(currentRequest) ) Seq(sso.OPEN_DATA_GROUP)
+                                  else CredentialManager.getUserAdminGroups(currentRequest)
+
+              //findingGroup.fold()   ...
+              apiClientIPA.showGroup(findingGroup) flatMap {
+                case Right(success) => ListDAFusers200(success.memberof_group)
+                case Left(err) => ListDAFusers500(err)
+              }
+
+          }*/
+            // ----- End of unmanaged code area for action  Security_managerYaml.listDAFusers
+     */
+
+    
+     // Dead code for absent methodSecurity_managerYaml.createDefaultDAForganization
+     /*
+            // ----- Start of unmanaged code area for action  Security_managerYaml.createDefaultDAForganization
+            execInContext[Future[CreateDefaultDAForganizationType[T] forSome { type T }]] ("createDefaultDAForganization"){ () =>
+            if (!CredentialManager.isDafAdmin(currentRequest))
+              CreateDefaultDAForganization500(Error(Option(1), Some("Admin permissions required"), None))
+            else
+              integrationService.createDefaultDafOrganization(organization.predefinedUserPwd) flatMap {
+                case Right(success) => CreateDefaultDAForganization200(success)
+                case Left(err) => CreateDefaultDAForganization500(err)
+              }
+          }
+            // ----- End of unmanaged code area for action  Security_managerYaml.createDefaultDAForganization
+     */
+
     
     }
 }

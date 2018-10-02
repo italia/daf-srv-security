@@ -33,6 +33,7 @@ unmanagedBase := baseDirectory.value / "lib/ClouderaImpalaJDBC41_2.5.43" //TODO 
 //wartremoverExcluded ++= getRecursiveListOfFiles(baseDirectory.value / "target" / "scala-2.11" / "routes").toSeq
 //wartremoverExcluded ++= routes.in(Compile).value
 
+/*
 lazy val client = (project in file("client")).
   settings(Seq(
     name := "daf-security-manager-client",
@@ -46,13 +47,14 @@ lazy val client = (project in file("client")).
       "com.typesafe.play" %% "play-ws" %  playVersion
     )
   )).
-  enablePlugins(SwaggerCodegenPlugin)
+  enablePlugins(SwaggerCodegenPlugin)*/
 
 lazy val root = (project in file(".")).
-  enablePlugins(PlayScala, ApiFirstCore, ApiFirstPlayScalaCodeGenerator, ApiFirstSwaggerParser, /*AutomateHeaderPlugin,*/ DockerPlugin).
-  dependsOn(client).aggregate(client)
+  enablePlugins(PlayScala, ApiFirstCore, ApiFirstPlayScalaCodeGenerator, ApiFirstSwaggerParser, /*AutomateHeaderPlugin,*/ DockerPlugin)//.
+  //dependsOn(client).aggregate(client)
 
-scalaVersion in ThisBuild := "2.11.8"
+
+scalaVersion in ThisBuild := "2.11.11"
 
 libraryDependencies ++= Seq(
   cache,
