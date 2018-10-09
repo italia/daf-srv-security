@@ -44,6 +44,7 @@ pipeline {
             when { branch 'test' }
             agent { label 'Master' }
             environment {
+                DEPLOY_ENV = 'test'
                 KUBECONFIG = '/var/lib/jenkins/.kube/config.teamdigitale-staging'
             }
             steps {
@@ -56,6 +57,7 @@ pipeline {
             when { branch 'master'}
             agent { label 'prod' }
             environment {
+                DEPLOY_ENV = 'prod'
                 KUBECONFIG = '/home/centos/.kube/config.teamdigitale-production'
             }
             steps {
