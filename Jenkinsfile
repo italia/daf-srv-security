@@ -3,6 +3,7 @@ pipeline {
     stages {
         stage('Compile test') {
             when { branch 'test' }
+            agent { label 'Master' }
             steps {
                 slackSend (message: "BUILD START: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' CHECK THE RESULT ON: https://cd.daf.teamdigitale.it/blue/organizations/jenkins/daf-srv-security/activity")
                 sh 'sbt clean compile'
@@ -20,6 +21,7 @@ pipeline {
         }
         stage('Publish test') {
             when { branch 'test' }
+            agent { label 'Master' }
             steps {
                 sh 'sbt docker:publish'
             }
@@ -33,6 +35,7 @@ pipeline {
         }
         stage('Deploy test') {
             when { branch 'test' }
+            agent { label 'Master' }
             environment {
                 DEPLOY_ENV = 'test'
                 KUBECONFIG = '/var/lib/jenkins/.kube/config.teamdigitale-staging'
