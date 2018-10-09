@@ -6,7 +6,8 @@ import uk.gov.hmrc.gitstamp.GitStampPlugin._
 organization in ThisBuild := "it.gov.daf"
 name := "daf-security-manager"
 
-val isStaging = sys.env.get("DEPLOY_ENV") == Some("test")
+val isStaging = sys.env.getOrElse("DEPLOY_ENV", "test") == "test"
+// val isStaging = sys.env.get("DEPLOY_ENV") == Some("test")
 
 Seq(gitStampSettings: _*)
 

@@ -26,6 +26,7 @@ pipeline {
                 DEPLOY_ENV = 'test'
             }
             steps {
+                sh 'echo $DEPLOY_ENV'
                 sh 'sbt docker:publish'
             }
         }
