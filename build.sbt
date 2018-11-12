@@ -2,16 +2,12 @@ import CommonBuild._
 import Versions._
 import com.typesafe.sbt.packager.docker.{Cmd, ExecCmd}
 import uk.gov.hmrc.gitstamp.GitStampPlugin._
+import Environment._
 
 organization in ThisBuild := "it.gov.daf"
 name := "daf-security-manager"
 
-val isStaging = sys.env.getOrElse("DEPLOY_ENV", "test") == "test"
-// val isStaging = sys.env.get("DEPLOY_ENV") == Some("test")
-
 Seq(gitStampSettings: _*)
-
-// version in ThisBuild := sys.env.get("SECURITY_MANAGER_VERSION").getOrElse("1.0.3-SNAPSHOT")
 
 scalacOptions ++= Seq(
   "-deprecation",
@@ -102,17 +98,15 @@ libraryDependencies ++= zookeeperLibs
 //Resolver.url("sbt-plugins", url("http://dl.bintray.com/zalando/sbt-plugins"))(Resolver.ivyStylePatterns),
 
 resolvers ++= Seq(
+  Resolver.mavenLocal,
   "zalando-bintray" at "https://dl.bintray.com/zalando/maven",
   "scalaz-bintray" at "http://dl.bintray.com/scalaz/releases",
   "jeffmay" at "https://dl.bintray.com/jeffmay/maven",
   Resolver.url("sbt-plugins", url("http://dl.bintray.com/gruggiero/sbt-plugins"))(Resolver.ivyStylePatterns),
   "cloudera" at "https://repository.cloudera.com/artifactory/cloudera-repos/",
   "lightshed-maven" at "http://dl.bintray.com/content/lightshed/maven",
-  Resolver.mavenLocal
+  "daf repo" at s"$nexusUrl/maven-public/"
 )
-
-resolvers ++= { if(isStaging) Seq("daf repo" at "http://nexus.teamdigitale.test:8081/repository/maven-public/")
-                else Seq("daf repo" at "http://nexus.daf.teamdigitale.it:8081/repository/maven-public/")}
 
 // Play provides two styles of routers, one expects its actions to be injected, the
 // other, legacy style, accesses its actions statically.
@@ -128,8 +122,7 @@ licenses += ("Apache-2.0", new URL("https://www.apache.org/licenses/LICENSE-2.0.
 headerLicense := Some(HeaderLicense.ALv2("2017", "TEAM PER LA TRASFORMAZIONE DIGITALE"))
 headerMappings := headerMappings.value + (HeaderFileType.conf -> HeaderCommentStyle.HashLineComment)
 
-dockerPackageMappings in Docker += (if(isStaging) baseDirectory.value / "cert" / "test" / "jssecacerts"
-                                    else baseDirectory.value / "cert" / "jssecacerts") -> "jssecacerts"
+dockerPackageMappings in Docker += (baseDirectory.value / "cert" / deployEnv / "jssecacerts") -> "jssecacerts"
 
 dockerPackageMappings in Docker += (baseDirectory.value / "script/kb_init.sh") -> "opt/docker/script/kb_init.sh"
 
@@ -150,16 +143,18 @@ dockerCommands := dockerCommands.value.flatMap {
   case other => List(other)
 }
 
+dockerBuildOptions ++= Seq("--network", "host")
+// dockerBuildOptions := Seq("--force-rm", "-t", dockerAlias.value.toString, "--network host")
+
+// dockerBuildCommand := Seq("docker", "build", ".", "dockerBuildOptions")
+
 dockerExposedPorts := Seq(9000)
 
 dockerEntrypoint := {Seq(s"bin/${name.value}", "-Dconfig.file=conf/production.conf")}
 
-dockerRepository := { if(isStaging)Option("nexus.teamdigitale.test") else Option("nexus.daf.teamdigitale.it") }
-
+dockerRepository := Option(nexus)
 
 publishTo in ThisBuild := {
-  val nexus = if(isStaging) "http://nexus.teamdigitale.test:8081/repository/"
-              else "http://nexus.daf.teamdigitale.it:8081/repository/"
 
   if (isSnapshot.value)
     Some("snapshots" at nexus + "maven-snapshots/")

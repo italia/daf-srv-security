@@ -3,7 +3,6 @@ target
 logs
 .DS_Store
 .history
-logs
 */build
 */conf/prodExt.conf
 */conf/testExt.conf
@@ -22,3 +21,5 @@ kubernetes/output.yml
 kubernetes/secrets-test.yml
 kubernetes/secrets-prod.yml
 project/project
+/kubernetes/daf-security-manager.yml
+/project/Environment.scala

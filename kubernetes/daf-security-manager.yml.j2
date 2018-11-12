@@ -27,7 +27,7 @@ spec:
     spec:
       containers:
       - name: security-manager
-        image: nexus.teamdigitale.test/daf-security-manager:2.0.0-SNAPSHOT
+        image: {{ nexus_servicename }}.{{ env_name }}.{{ env_domain }}/daf-security-manager:2.0.0-SNAPSHOT
         imagePullPolicy: Always
         ports:
         - name: client
@@ -116,9 +116,9 @@ spec:
         - name: security-manager-logback-volume
           mountPath: /opt/docker/conf/logback.xml
           subPath: logback.xml
-        - name: glusterfsvol
-          mountPath: /opt/docker/logs
-          subPath: security-manager/logs
+#       - name: glusterfsvol
+#         mountPath: /opt/docker/logs
+#         subPath: security-manager/logs
         - name: security-manager-cert-volume
           mountPath: /opt/docker/cert/
         - name: config-volume-kerb
@@ -140,9 +140,9 @@ spec:
       - name: config-volume-kerb
         configMap:
           name: krb5-conf
-      - name: glusterfsvol
-        persistentVolumeClaim:
-          claimName: gluster-claim
+#      - name: glusterfsvol
+#        persistentVolumeClaim:
+#          claimName: gluster-claim
 #      - name: krb5conf
 #        hostPath:
 #          path: /etc/krb5.conf
