@@ -18,7 +18,7 @@ pipeline {
             }
         }
         stage('Compile test') {
-            when { branch 'test' }
+            when { branch 'dev' }
             agent { label 'Master' }
             environment {
                 DEPLOY_ENV = 'test'
