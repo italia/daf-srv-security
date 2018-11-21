@@ -1003,6 +1003,12 @@ definitions:
       supSetConnectedDbName:
         description: Superset connected DB name
         type: string
+      organizationMail:
+        description: Organization email
+        type: string
+      ipaCode:
+        description: organization IPA code
+        type: string
   DafGroupInfo:
     type: object
     required:
