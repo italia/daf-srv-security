@@ -8,7 +8,7 @@ logs
 */conf/testExt.conf
 */conf/prodLocal.conf
 */conf/testLocal.conf
-*/localConfigs/*
+localConfigs
 test-dir/
 .ipynb_checkpoints
 */conf/production/
