@@ -28,7 +28,7 @@ spec:
     spec:
       containers:
       - name: security-manager
-        image: {{ nexus_servicename }}.{{ env_name }}.{{ env_domain }}/daf-security-manager:2.0.1-SNAPSHOT
+        image: {{ nexus_servicename }}.{{ env_name }}.{{ env_domain }}/daf-security-manager:2.0.1
         imagePullPolicy: Always
         ports:
         - name: client
