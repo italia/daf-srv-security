@@ -9,7 +9,7 @@ import it.gov.daf.sso.LoginClientLocal
 import play.api.Logger
 import play.api.libs.json._
 import play.api.libs.ws.{WSClient, WSResponse}
-import security_manager.yaml.{Error, Success}
+import security_manager.yaml.{DafGroup, Error, Success}
 import cats.implicits._
 
 import scala.concurrent.Future
@@ -58,24 +58,26 @@ class CkanApiClient @Inject()(secInvokeManager: SecuredInvocationManager, cacheW
     createOrganizationAsAdmin(false,groupCn)
   }*/
 
-  def createOrganizationInGeoCkanAsAdmin(groupCn:String):Future[Either[Error, Success]] = {
-    createOrganizationAsAdmin(true,groupCn)
+  def createOrganizationInGeoCkanAsAdmin(dafOrg:DafGroup):Future[Either[Error, Success]] = {
+    createOrganizationAsAdmin(true,dafOrg)
   }
 
   private type CkanInfo = (String,LoginInfo)
   private def selectInfo(isGeoCkan:Boolean):CkanInfo =  if(isGeoCkan) (ConfigReader.ckanGeoHost, ckanGeoAdminLogin)
                                                         else throw new Exception("Only ckan geo is permitted")//else (ConfigReader.ckanHost,ckanAdminLogin)
 
-  private def createOrganizationAsAdmin(isGeoCkan:Boolean,groupCn:String):Future[Either[Error, Success]] = {
+  private def createOrganizationAsAdmin(isGeoCkan:Boolean,dafOrg:DafGroup):Future[Either[Error, Success]] = {
 
     val ckaninfo = selectInfo(isGeoCkan)
 
 
     val jsonRequest: JsValue = Json.parse(
       s"""{
-           "description": "Organizzazione: $groupCn",
-           "title": "Organizzazione: $groupCn",
-           "name": "$groupCn",
+           "description": "Organizzazione: ${dafOrg.groupCn}",
+           "title": "Organizzazione: ${dafOrg.groupCn}",
+           "name": "${dafOrg.groupCn}",
+           "email":"${dafOrg.organizationMail.getOrElse("")}",
+           "identifier":"${dafOrg.ipaCode.getOrElse("")}",
            "is_organization": true,
            "state": "active",
            "type": "organization"

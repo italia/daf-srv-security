@@ -52,7 +52,7 @@ class IntegrationService @Inject()(apiClientIPA:ApiClientIPA, supersetApiClient:
       d <- stepOver( c, kyloApiClient.createCategory(dafOrg.groupCn) )
 
       //e <- step( c, ckanApiClient.createOrganizationAsAdmin(groupCn) ) non si usa + ckan
-      e <- step( c, ckanApiClient.createOrganizationInGeoCkanAsAdmin(groupCn) )
+      e <- step( c, ckanApiClient.createOrganizationInGeoCkanAsAdmin(dafOrg) )
       //f <- EitherT( grafanaApiClient.createOrganization(groupCn) ) TODO da riabilitare
       g <- stepOver( e, addUserToOrganization(groupCn,predefinedOrgIpaUser.uid) )
       //g <- EitherT( grafanaApiClient.addUserInOrganization(groupCn,toUserName(groupCn)) )
