@@ -52,6 +52,7 @@ class LoginClientLocal() extends LoginClient {
       case LoginClientLocal.JUPYTER => loginJupyter(loginInfo.user, loginInfo.password, wsClient)
       case LoginClientLocal.GRAFANA => loginGrafana(loginInfo.user, loginInfo.password, wsClient)
       case LoginClientLocal.HADOOP => loginWebHDFS(loginInfo.user, loginInfo.password)
+      case LoginClientLocal.LIVY => loginLivy(loginInfo.user, loginInfo.password)
       case _ => throw new Exception("Unexpeted exception: application name not found")
     }
 
@@ -69,6 +70,7 @@ class LoginClientLocal() extends LoginClient {
       case LoginClientLocal.JUPYTER => loginJupyter(loginInfo.user, loginInfo.password, wsClient).map(Seq(_))
       case LoginClientLocal.GRAFANA => loginGrafanaFE(loginInfo.user, loginInfo.password, wsClient)
       case LoginClientLocal.HADOOP => loginWebHDFS(loginInfo.user, loginInfo.password).map(Seq(_))
+      case LoginClientLocal.LIVY => loginLivy(loginInfo.user, loginInfo.password).map(Seq(_))
       case _ => throw new Exception("Unexpeted exception: application name not found")
     }
 
@@ -87,6 +89,7 @@ class LoginClientLocal() extends LoginClient {
       case LoginClientLocal.JUPYTER => val msg="Jupyter dosen't have admins";logger.error(msg);throw new Exception(msg) //loginJupyter(loginInfo.user, loginInfo.password, wsClient)
       case LoginClientLocal.GRAFANA => loginGrafana(ConfigReader.grafanaAdminUser, ConfigReader.grafanaAdminPwd, wsClient)
       case LoginClientLocal.HADOOP => val msg="webHDFS dosen't have admins";logger.error(msg);throw new Exception(msg)
+      case LoginClientLocal.LIVY => val msg="livy dosen't have admins";logger.error(msg);throw new Exception(msg)
       case _ => throw new Exception("Unexpeted exception: application name not found")
     }
 
@@ -209,7 +212,7 @@ class LoginClientLocal() extends LoginClient {
 
     logger.info("login WebHDFS")
 
-    val out = WebHDFSLogin.loginF(userName,pwd) map{
+    val out = BasicAuthToSPNEGO.loginF(userName,pwd,HdfsService) map{
       case Right(r) => r
       case Left(l) => throw new Exception(l)
     }
@@ -217,7 +220,25 @@ class LoginClientLocal() extends LoginClient {
     out.map{ resp =>
       play.api.mvc.Cookies.fromSetCookieHeader( Some(resp) ).get("hadoop.auth") match{
         case Some(s) => s
-        case None => throw new Exception(s"Hadoop cookie not found. WebHDFSLogin response:$resp")
+        case None => throw new Exception(s"Hadoop cookie not found. BasicAuthToSPNEGO.login to hdfs response:$resp")
+      }
+    }
+
+  }
+
+  private def loginLivy(userName: String, pwd: String): Future[Cookie] = {
+
+    logger.info("login Livy")
+
+    val out = BasicAuthToSPNEGO.loginF(userName,pwd,LivyService) map{
+      case Right(r) => r
+      case Left(l) => throw new Exception(l)
+    }
+
+    out.map{ resp =>
+      play.api.mvc.Cookies.fromSetCookieHeader( Some(resp) ).get("hadoop.auth") match{
+        case Some(s) => s
+        case None => throw new Exception(s"Hadoop cookie not found. BasicAuthToSPNEGO.login to livy response:$resp")
       }
     }
 
@@ -285,6 +306,7 @@ object LoginClientLocal {
   val JUPYTER = "jupyter"
   val GRAFANA = "grafana"
   val HADOOP = "hadoop"
+  val LIVY = "livy"
 
 }
 

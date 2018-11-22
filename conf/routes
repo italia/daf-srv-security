@@ -51,6 +51,13 @@ POST        /hdfs/proxy/                                                controll
 DELETE      /hdfs/proxy/*path                                           controllers.HdfsController.callWebHdfs(path:String)
 DELETE      /hdfs/proxy/                                                controllers.HdfsController.callWebHdfs(path:String="")
 
+GET          /:service/proxy/*path                                      controllers.RestServiceProxyController.proxy(service:String, path:String)
+PUT          /:service/proxy/*path                                      controllers.RestServiceProxyController.proxy(service:String, path:String)
+POST         /:service/proxy/*path                                      controllers.RestServiceProxyController.proxy(service:String, path:String)
+DELETE       /:service/proxy/*path                                      controllers.RestServiceProxyController.proxy(service:String, path:String)
+
+
+
 
 # Migration services, uncomment to activate them
 POST        /migration/createRole/:roleName                             controllers.MigrationController.createRole(roleName:String)
