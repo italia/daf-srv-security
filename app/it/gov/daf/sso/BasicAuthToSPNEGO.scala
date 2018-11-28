@@ -10,15 +10,18 @@ import scala.concurrent.Future
 import scala.sys.process.{Process, ProcessLogger}
 import play.api.libs.concurrent.Execution.Implicits._
 
-object WebHDFSLogin {
+object BasicAuthToSPNEGO {
 
-  private val HADOOP_URL = ConfigReader.hadoopUrl
-
-  def loginF(usrName:String,pwd:String):Future[Either[String,String]] = {
-    Future{ login(usrName,pwd) }
+  def loginF(usrName:String, pwd:String, service:KerberosService):Future[Either[String,String]] = {
+    Future{ login(usrName,pwd,service) }
   }
 
-  def login(usrName:String,pwd:String):Either[String,String] = {
+  def login(usrName:String, pwd:String, service:KerberosService):Either[String,String] = {
+
+    val serviceUrl = service match{
+      case HdfsService => ConfigReader.hadoopUrl+HdfsService.loginUrl
+      case LivyService => ConfigReader.livyUrl+LivyService.loginUrl
+    }
 
     val out = new StringBuilder("OUT:")
     val err = new StringBuilder("ERR:")
@@ -31,10 +34,10 @@ object WebHDFSLogin {
         (e: String) => {err.append(s"$e\n");()} )
 
       val scriptName =  if(System.getProperty("STAGING") != null) "./script/kb_init_local_test.sh"
-                        else "./script/kb_init.sh"
+      else "./script/kb_init.sh"
 
 
-      val commandStr = s"timeout 5 $scriptName $usrName $HADOOP_URL"  // Process should hang: command timeout needed
+      val commandStr = s"timeout 5 $scriptName $usrName $serviceUrl"  // Process should hang: command timeout needed
       Logger.logger.debug(s"Launching $commandStr")
       val pb = Process(commandStr)
 

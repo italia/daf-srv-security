@@ -10,6 +10,8 @@ import play.api.libs.json._
 import play.api.libs.ws.{WSClient, WSResponse}
 import java.util.Date
 
+import it.gov.daf.sso.LoginClientLocal
+
 import scala.concurrent.Future
 
 
@@ -42,7 +44,7 @@ class WebHDFSApiProxy @Inject()(secInvokeManager: SecuredInvocationManager, impl
   private def handleServiceCall( serviceInvoke:(String,WSClient)=> Future[WSResponse], loginInfoParam:Option[LoginInfo] )={
 
 
-    val loginInfo = loginInfoParam.getOrElse(readLoginInfo)
+    val loginInfo = loginInfoParam.getOrElse(readLoginInfo(LoginClientLocal.HADOOP))
 
     secInvokeManager.manageRestServiceCallWithResp(loginInfo, serviceInvoke, 200,201,307,400,401,403,404).map {
       case Right(resp) => if(resp.httpCode<400) Right(resp)

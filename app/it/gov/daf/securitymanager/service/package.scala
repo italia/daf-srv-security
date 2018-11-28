@@ -87,7 +87,12 @@ package object service {
 
   }
 
-  def readLoginInfo()(implicit cacheWrapper:CacheWrapper)={
+
+  def readLoginInfo()(implicit cacheWrapper:CacheWrapper):LoginInfo={
+    readLoginInfo(null)
+  }
+
+  def readLoginInfo(service:String)(implicit cacheWrapper:CacheWrapper)={
 
     val userName = RequestContext.getUsername()
 
@@ -98,7 +103,7 @@ package object service {
       case None => throw new Exception("User not in cache")
     }
 
-    new LoginInfo( RequestContext.getUsername(), pwd, LoginClientLocal.HADOOP )
+    new LoginInfo( RequestContext.getUsername(), pwd, service )
   }
 
   object Permission {
