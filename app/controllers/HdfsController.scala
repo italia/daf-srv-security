@@ -36,7 +36,7 @@ class HdfsController @Inject()(ws: WSClient, webHDFSApiClient:WebHDFSApiClient, 
   }
 
 
-  def callWebHdfs(path:String) = Action.async (wehdfsBodyParser) { implicit request =>
+  def callWebHdfs(path:String) = Action.async (webHdfsBodyParser) { implicit request =>
 
     execInContext[Future[Result]]("callWebHdfs") { () =>
 
@@ -120,7 +120,7 @@ class HdfsController @Inject()(ws: WSClient, webHDFSApiClient:WebHDFSApiClient, 
   }
 
 
-  private def wehdfsBodyParser: BodyParser[SourceWrapper] = BodyParser { reqHd =>
+  private def webHdfsBodyParser: BodyParser[SourceWrapper] = BodyParser { reqHd =>
 
     streams.Accumulator.source[ByteString].map{ source =>
       Right(SourceWrapper(source))

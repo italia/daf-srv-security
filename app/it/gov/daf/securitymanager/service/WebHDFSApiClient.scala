@@ -27,7 +27,7 @@ class WebHDFSApiClient @Inject()(secInvokeManager: SecuredInvocationManager, web
 
     Logger.logger.debug("setOwnershipForMigration: " + path)
 
-    val loginInfo = readLoginInfo
+    val loginInfo = readLoginInfo(LoginClientLocal.HADOOP)
 
     def fileList(): Future[Seq[String]] = {
       webHDFSApiProxy.callHdfsService("GET", path, Map("op" -> "LISTSTATUS"), Some(loginInfo)).map {
@@ -110,7 +110,7 @@ class WebHDFSApiClient @Inject()(secInvokeManager: SecuredInvocationManager, web
 
   private def handleServiceCall(serviceInvoke:(String,WSClient)=> Future[WSResponse], handleJson:(RestServiceResponse)=> Either[RestServiceResponse,JsValue] )={
 
-    val loginInfo = readLoginInfo()
+    val loginInfo = readLoginInfo(LoginClientLocal.HADOOP)
 
     secInvokeManager.manageRestServiceCallWithResp(loginInfo, serviceInvoke, 200,201,400,401,403,404).map {
       case Right(resp) => handleJson(resp)

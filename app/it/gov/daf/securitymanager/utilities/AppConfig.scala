@@ -84,6 +84,8 @@ private class AppConfig @Inject()(playConfig: Configuration) {
 
   val hdfsAdminUser :Option[String] = playConfig.getString("hdfs.adminUser")
 
+  val livyUrl :Option[String] = playConfig.getString("livy.url")
+
 
 }
 
@@ -141,6 +143,8 @@ object ConfigReader {
 
   require(config.hdfsUser.nonEmpty,"hdfs user must be specified")
   require(config.hdfsUserPwd.nonEmpty,"hdfs user pwd must be specified")
+
+  require(config.livyUrl.nonEmpty,"a Livy url  must be specified")
 
 
   //def userIdHeader: String = config.userIdHeader.getOrElse("userid")
@@ -222,6 +226,8 @@ object ConfigReader {
   def hdfsUserPwd:String = config.hdfsUserPwd.get
 
   def hdfsAdminUser:String= config.hdfsAdminUser.getOrElse("")
+
+  def livyUrl:String = config.livyUrl.get
 
 }
 

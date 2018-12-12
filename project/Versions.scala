@@ -10,5 +10,5 @@ object Versions {
 
   val betterFilesVersion = "2.17.1"
 
-  val dafCommonVersion = "1.1.3"
+  val dafCommonVersion = "1.1.4"
 }

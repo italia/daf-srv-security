@@ -1,1 +1,1 @@
-version in ThisBuild := Versions.defaultVersion
+version := Versions.defaultVersion
