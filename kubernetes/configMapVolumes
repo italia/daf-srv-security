@@ -1,0 +1,4 @@
+[ { name = "security-manager-logback-volume", configMap = "security-manager-logback" }
+, { name = "config-volume", configMap = "security-manager-conf" }
+, { name = "config-volume-kerb", configMap = "krb5-conf" }
+]
