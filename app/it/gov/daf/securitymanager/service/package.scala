@@ -98,7 +98,7 @@ package object service {
 
     logger.debug(s"retriving user $userName from cache")
 
-    val pwd = cacheWrapper.getPwd(userName) match {
+    val pwd = cacheWrapper.getCredentials(userName) match {
       case Some(x) =>x
       case None => throw new Exception("User not in cache")
     }
