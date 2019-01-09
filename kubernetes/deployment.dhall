@@ -8,7 +8,7 @@ let config =  /usr/local/var/dhall-kubernetes/api/Deployment/default
                   ⫽ /env/nexus
                   ⫽ { name = "security-manager"
                     , imageName = "daf-security-manager"
-                    , imageTag = "2.0.1-SNAPSHOT"
+                    , imageTag = "2.0.2"
                     , memory = 3000
                     , port = [ 9000 ] : Optional Natural
                     , mounts = ./volumeMounts
