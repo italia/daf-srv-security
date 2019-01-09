@@ -15,7 +15,7 @@ import play.api.libs.ws.WSClient
 import play.api.mvc._
 
 import scala.concurrent.Future
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 
 class SSOController @Inject()(ws: WSClient, config: ConfigurationProvider, cacheWrapper: CacheWrapper, loginClientLocal:LoginClientLocal) extends Controller {
@@ -120,7 +120,7 @@ class SSOController @Inject()(ws: WSClient, config: ConfigurationProvider, cache
     execInContext[Result] ("test") { () =>
       val username = CredentialManager.readCredentialFromRequest(request).username
 
-      if (cacheWrapper.getPwd(username).isEmpty) {
+      if (cacheWrapper.getCredentials(username).isEmpty) {
         Unauthorized("JWT expired")
       } else
         Ok("Success")
@@ -235,12 +235,36 @@ class SSOController @Inject()(ws: WSClient, config: ConfigurationProvider, cache
 
       val loginInfo = new LoginInfo(
         username,
-        cacheWrapper.getPwd(username).get,
+        cacheWrapper.getCredentials(username).get,
         appName)
 
       loginClientLocal.login(loginInfo, ws).map { cookie => Ok(Json.toJson(cookie)) }
 
     }
+  }
+
+
+  def retrivePwdFromTokenInternal = Action.async { implicit request =>
+    execInContext[Future[Result]] ("retrivePwdFromTokenInternal"){ () =>
+
+        request.headers.get("Token") match{
+        case Some(t) => retrivePwd(t)
+        case None => Future.successful{ BadRequest("user token required") }
+      }
+
+    }
+  }
+
+  private def retrivePwd(token:String)={
+
+    cacheWrapper.getCredentials(token) match {
+      case Some(user) =>  cacheWrapper.getCredentials(user) match {
+        case Some(pwd) => Future.successful{ Ok(pwd) }
+        case None => Future.successful{ NotFound("user not in cache") }
+      }
+      case None => Future.successful{ NotFound("token not in cache") }
+    }
+
   }
 
 

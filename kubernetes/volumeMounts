@@ -1,0 +1,6 @@
+[ { name = "config-volume", mountPath = "/opt/docker/conf/mnt",  subPath = None Text, readOnly = None Bool }
+, { name = "security-manager-logback-volume", mountPath = "/opt/docker/conf/logback.xml", subPath = Some "logback.xml", readOnly = None Bool }
+, { name = "security-manager-cert-volume", mountPath = "/opt/docker/cert/master-impala.jks", subPath = Some "master-impala.jks", readOnly = Some True }
+, { name = "security-manager-cert-volume", mountPath = "/docker-java-home/jre/lib/security/jssecacerts", subPath = Some "jssecacerts", readOnly = Some True }
+, { name = "config-volume-kerb", mountPath = "/etc/extKerberosConfig",  subPath = None Text, readOnly = None Bool }
+]

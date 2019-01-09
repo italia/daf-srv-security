@@ -25,13 +25,28 @@ class CredentialFilter@Inject() (implicit val mat: Materializer, ec: ExecutionCo
 
       val credentials = CredentialManager.readCredentialFromRequest(requestHeader)
       credentials match {
-        case Credentials(u, p, _) => logger.debug(s"caching $u");cacheWrapper.deleteCredentials(u); cacheWrapper.putCredentials(u,p)
+        case Credentials(u,p,_) =>  logger.debug(s"caching $u")
+                                    cacheWrapper.deleteCredentials(u)
+                                    cacheWrapper.putCredentials(u,p)
+
+        case Profile(u,t,_) => cacheToken(u,t)
+
         case _ => logger.debug("credential not cached")
       }
 
     }
 
     nextFilter(requestHeader)
+
+  }
+
+  private def cacheToken(user:String,token:String):Unit={
+
+    cacheWrapper.getCredentials(token) match{
+      case Some(_) => logger.debug("credential not cached")
+      case None =>    logger.debug(s"caching token of $user")
+                      cacheWrapper.putCredentials(token,user)
+    }
 
   }
 
