@@ -13,7 +13,7 @@ object Utils {
 
     Try{
       CredentialManager.readCredentialFromRequest(requestHeader) match {
-        case p:Profile => cacheWrapper.getPwd(p.username) match{
+        case p:Profile => cacheWrapper.getCredentials(p.username) match{
           case Some(pwd) => Credentials(p.username, pwd, p.groups)
           case None => throw new Exception("Can't find credentails in cache")
         }
