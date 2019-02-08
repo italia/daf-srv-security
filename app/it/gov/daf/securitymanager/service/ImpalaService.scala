@@ -141,17 +141,22 @@ class ImpalaService @Inject()(implicit val cacheWrapper:CacheWrapper){
 
   }
 
-  private def invalidateMetadata():Boolean={
+  private def executeDDL(ddl:String, asAdmin:Boolean=false ):Boolean={
 
-    val conn = ds.getConnection(ConfigReader.impalaAdminUser, ConfigReader.impalaAdminUserPwd)
+    logger.debug("Impala connection request")
+
+    val conn =  if(asAdmin)
+                  ds.getConnection(ConfigReader.impalaAdminUser, ConfigReader.impalaAdminUserPwd)
+                else
+                  ds.getConnection(readLoginInfo.user, readLoginInfo.password)
 
     val out = scala.util.Try{
 
       val stmt = conn.createStatement()
 
-      logger.debug("Invalidating metadata..")
-      val res = stmt.execute("INVALIDATE METADATA")
-      logger.debug("Invalidated")
+      logger.debug(s" Impala DDL : $ddl")
+      val res = stmt.execute(ddl)
+      logger.debug("Impala DDL executed")
       conn.close()
       res
     }
@@ -163,6 +168,23 @@ class ImpalaService @Inject()(implicit val cacheWrapper:CacheWrapper){
 
   }
 
+
+  def invalidateMetadata():Boolean = executeDDL("INVALIDATE METADATA",true)
+
+
+  def createTableFromParquet(path:String, fileName:String, tableName:String, schemaName:String) = {
+
+    val ddl = s"""CREATE TABLE $schemaName.$tableName LIKE PARQUET '$path/$fileName' STORED AS PARQUET
+                  LOCATION '$path'"""
+
+    executeDDL(ddl)
+
+    /*
+     CREATE TABLE test LIKE PARQUET '/daf/ordinary/daf_data/test__supset/prova.parquet' STORED AS PARQUET
+     LOCATION '/daf/ordinary/daf_data/test__supset/prova.parquet';
+     */
+
+  }
 
   private def executeHiveDDLs(query:Seq[String]):Seq[Boolean]={
 

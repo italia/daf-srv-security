@@ -4,7 +4,7 @@ import javax.inject.Inject
 
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
-import it.gov.daf.securitymanager.service.{WebHDFSApiClient, WebHDFSApiProxy}
+import it.gov.daf.securitymanager.service.{ProfilingService, WebHDFSApiClient, WebHDFSApiProxy}
 import it.gov.daf.common.utils.RequestContext.execInContext
 import play.api.Logger
 import play.api.http.HttpEntity
@@ -17,12 +17,27 @@ import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
 
 
-class HdfsController @Inject()(ws: WSClient, webHDFSApiClient:WebHDFSApiClient, webHDFSApiProxy:WebHDFSApiProxy) extends Controller {
+class HdfsController @Inject()(ws: WSClient, webHDFSApiClient:WebHDFSApiClient, webHDFSApiProxy:WebHDFSApiProxy, profilingService: ProfilingService) extends Controller {
 
 
   private val logger = Logger(this.getClass.getName)
 
   //----------------SECURED API---------------------------------------
+
+
+
+  def setPermissionRecursively(path:String) = Action.async { implicit request =>
+    execInContext[Future[Result]]("setPermissionRecursively") { () =>
+
+      val queryString: Map[String, String] = request.queryString.map { case (k,v) => k -> v.mkString }
+
+      profilingService.setDatasetHDFSPermission( path, queryString("groupName"), queryString("groupType"), queryString("permission") ).map {
+        case Right(r) => Ok(s"""{"message":"${r.message.getOrElse("")}"}""")
+        case Left(l) => InternalServerError(s"""{"message":"${l.message.getOrElse("")}"}""")
+      }
+
+    }
+  }
 
   def retriveACL(path:String) = Action.async { implicit request =>
     execInContext[Future[Result]]("retriveACL") { () =>
@@ -40,7 +55,7 @@ class HdfsController @Inject()(ws: WSClient, webHDFSApiClient:WebHDFSApiClient, 
 
     execInContext[Future[Result]]("callWebHdfs") { () =>
 
-      val queryString: Map[String, String] = request.queryString.map { case (k,v) => k -> v.mkString}
+      val queryString: Map[String, String] = request.queryString.map { case (k,v) => k -> v.mkString }
 
       logger.debug("Request:" + request)
 
