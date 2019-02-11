@@ -18,7 +18,7 @@ GET         /api/*file                     controllers.Assets.versioned(path="/p
 
 ->          /security-manager/v1           security_manager.yaml.Routes
 
-GET         /metrics                         controllers.MetricsController.index
+GET         /metrics                       controllers.MetricsController.index
 
 ### NoDocs ###
 GET         /security-manager/docs/swagger-ui/*file controllers.Assets.at(path:String="/public/lib/swagger-ui", file:String)
@@ -41,7 +41,10 @@ GET         /sso-manager/internal/retrivePwdFromToken                   controll
 
 POST        /sso-manager/managed/bi-open-login                          controllers.SSOController.biOpenLogin
 
-POST        /hdfs/setACL/*path                                          controllers.HdfsController.setPermissionRecursively(path:String)
+POST        /impala/createTableFromFile/*path                           controllers.ImpalaController.createImpalaTableFromFile(path:String, schemaName:String, tableName:String)
+POST        /impala/createGrant                                         controllers.ImpalaController.createImpalaGrant(schemaName:String, tableName:String)
+POST        /hdfs/setACL/*path                                          controllers.HdfsController.setPermissionRecursively(path:String, groupName:String, groupType:String, permission:String)
+
 GET         /hdfs/retriveACL/*path                                      controllers.HdfsController.retriveACL(path:String)
 
 GET         /hdfs/proxy/*path                                           controllers.HdfsController.callWebHdfs(path:String)
@@ -62,13 +65,13 @@ DELETE       /:service/proxy/*path                                      controll
 
 
 # Migration services, uncomment to activate them
-POST        /migration/createRole/:roleName                             controllers.MigrationController.createRole(roleName:String)
-POST        /migration/createHDFShomeDir/:userId                        controllers.MigrationController.createHDFShomeDir(userId:String)
-POST        /migration/addUserToOpenGroup/:userId                       controllers.MigrationController.addUserToOpenGroup(userId:String)
-POST        /migration/createImpalaRole                                 controllers.MigrationController.createImpalaRole
-POST        /migration/createGrant                                      controllers.MigrationController.createGrant
-POST        /migration/setDatasetFilesOwnership                         controllers.MigrationController.setDatasetFilesOwnership
-PUT         /migration/setDefaultViewerRole                             controllers.MigrationController.setDefaultViewerRole
-PUT         /migration/setEditorRole                                    controllers.MigrationController.setEditorRole
-POST        /migration/addOrgToOrgsGroup/:orgName                       controllers.MigrationController.addOrgToOrgsGroup(orgName:String)
+#POST        /migration/createRole/:roleName                             controllers.MigrationController.createRole(roleName:String)
+#POST        /migration/createHDFShomeDir/:userId                        controllers.MigrationController.createHDFShomeDir(userId:String)
+#POST        /migration/addUserToOpenGroup/:userId                       controllers.MigrationController.addUserToOpenGroup(userId:String)
+#POST        /migration/createImpalaRole                                 controllers.MigrationController.createImpalaRole
+#POST        /migration/createGrant                                      controllers.MigrationController.createGrant
+#POST        /migration/setDatasetFilesOwnership                         controllers.MigrationController.setDatasetFilesOwnership
+#PUT         /migration/setDefaultViewerRole                             controllers.MigrationController.setDefaultViewerRole
+#PUT         /migration/setEditorRole                                    controllers.MigrationController.setEditorRole
+#POST        /migration/addOrgToOrgsGroup/:orgName                       controllers.MigrationController.addOrgToOrgsGroup(orgName:String)
 

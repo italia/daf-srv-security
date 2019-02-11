@@ -4,7 +4,7 @@ import javax.inject.Inject
 
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
-import it.gov.daf.securitymanager.service.{ProfilingService, WebHDFSApiClient, WebHDFSApiProxy}
+import it.gov.daf.securitymanager.service.{ImpalaService, ProfilingService, WebHDFSApiClient, WebHDFSApiProxy}
 import it.gov.daf.common.utils.RequestContext.execInContext
 import play.api.Logger
 import play.api.http.HttpEntity
@@ -14,6 +14,8 @@ import play.api.mvc._
 
 import scala.concurrent.Future
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
+
+import scala.util.{Failure, Success, Try}
 
 
 
@@ -25,19 +27,17 @@ class HdfsController @Inject()(ws: WSClient, webHDFSApiClient:WebHDFSApiClient, 
   //----------------SECURED API---------------------------------------
 
 
-
-  def setPermissionRecursively(path:String) = Action.async { implicit request =>
+  def setPermissionRecursively(path:String, groupName:String, groupType:String, permission:String) = Action.async { implicit request =>
     execInContext[Future[Result]]("setPermissionRecursively") { () =>
 
-      val queryString: Map[String, String] = request.queryString.map { case (k,v) => k -> v.mkString }
-
-      profilingService.setDatasetHDFSPermission( path, queryString("groupName"), queryString("groupType"), queryString("permission") ).map {
+      profilingService.setDatasetHDFSPermission( path, groupName, groupType, permission ).map {
         case Right(r) => Ok(s"""{"message":"${r.message.getOrElse("")}"}""")
         case Left(l) => InternalServerError(s"""{"message":"${l.message.getOrElse("")}"}""")
       }
 
     }
   }
+
 
   def retriveACL(path:String) = Action.async { implicit request =>
     execInContext[Future[Result]]("retriveACL") { () =>

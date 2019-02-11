@@ -21,7 +21,7 @@ import security_manager.yaml.BodyReads._
 import scala.util.{Left, Try}
 
 @Singleton
-class ProfilingService @Inject()(webHDFSApiProxy:WebHDFSApiProxy, impalaService:ImpalaService, integrationService: IntegrationService, apiClientIPA: ApiClientIPA,supersetApiClient: SupersetApiClient){
+class ProfilingService @Inject()(webHDFSApiProxy:WebHDFSApiProxy, impalaService:ImpalaService, integrationService: IntegrationService, apiClientIPA: ApiClientIPA, supersetApiClient: SupersetApiClient){
 
 
   private val logger = Logger(this.getClass.getName)

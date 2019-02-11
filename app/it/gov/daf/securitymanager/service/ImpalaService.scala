@@ -8,7 +8,7 @@ import it.gov.daf.securitymanager.utilities.ConfigReader
 import it.gov.daf.sso
 import play.api.Logger
 
-import scala.util.Failure
+import scala.util.{Failure, Success, Try}
 
 
 @Singleton
@@ -29,7 +29,7 @@ class ImpalaService @Inject()(implicit val cacheWrapper:CacheWrapper){
   hiveDs.setURL(hiveJdbcString)
 
 
-  def createGrant(tableName:String, name:String, permission:String,isUSer:Boolean,withGrantOpt:Boolean):Either[String,String]={
+  def createGrant(tableName:String, name:String, permission:String, isUSer:Boolean, withGrantOpt:Boolean):Either[String,String]={
 
     val permissionOnQuery = if(permission == Permission.read.toString || name==sso.OPEN_DATA_GROUP) "SELECT"
                             else "ALL"
@@ -47,6 +47,29 @@ class ImpalaService @Inject()(implicit val cacheWrapper:CacheWrapper){
     logger.debug(s"invalidated Metadata: $res2")
 
     Right("Grant created")
+
+  }
+
+  def createImpalaGrant(tableName:String, name:String, permission:String, isUSer:Boolean, withGrantOpt:Boolean):Either[String,String]={
+
+    Try{
+      val permissionOnQuery = if (permission == Permission.read.toString || name == sso.OPEN_DATA_GROUP) "SELECT"
+      else "ALL"
+
+      val grantOption = if (withGrantOpt) "WITH GRANT OPTION" else ""
+
+      val roleName = if (isUSer) s"${name}_user_role" else toGroupRoleName(name)
+      val query = s"GRANT $permissionOnQuery ON TABLE $tableName TO ROLE $roleName $grantOption"
+
+      val res = executeDDL(query, true)
+
+      logger.debug(s"Grant created: $res")
+    } match{
+      case Success(_) => Right("Grant created")
+      case Failure(e) => Logger.error(e.getMessage,e); Left(e.getMessage)
+    }
+    //val res2 = invalidateMetadata()
+    //logger.debug(s"invalidated Metadata: $res2")
 
   }
 
@@ -172,17 +195,12 @@ class ImpalaService @Inject()(implicit val cacheWrapper:CacheWrapper){
   def invalidateMetadata():Boolean = executeDDL("INVALIDATE METADATA",true)
 
 
-  def createTableFromParquet(path:String, fileName:String, tableName:String, schemaName:String) = {
+  def createTableFromParquet(path:String, fileName:String, schemaName:String, tableName:String) = {
 
-    val ddl = s"""CREATE TABLE $schemaName.$tableName LIKE PARQUET '$path/$fileName' STORED AS PARQUET
+    val ddl = s"""CREATE EXTERNAL TABLE $schemaName.$tableName LIKE PARQUET '$path/$fileName' STORED AS PARQUET
                   LOCATION '$path'"""
 
-    executeDDL(ddl)
-
-    /*
-     CREATE TABLE test LIKE PARQUET '/daf/ordinary/daf_data/test__supset/prova.parquet' STORED AS PARQUET
-     LOCATION '/daf/ordinary/daf_data/test__supset/prova.parquet';
-     */
+    executeDDL(ddl,true)
 
   }
 
