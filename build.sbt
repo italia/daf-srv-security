@@ -135,7 +135,7 @@ dockerCommands := dockerCommands.value.flatMap {
     Cmd("RUN", "apt-get update"),
     Cmd("RUN", "DEBIAN_FRONTEND=noninteractive apt-get install -y bash krb5-user curl"),
 //    Cmd("RUN", "ln -sf /etc/krb5.conf /opt/jdk/jre/lib/security/krb5.conf"),
-    Cmd("RUN", "ln -sf /etc/krb5.conf /docker-java-home/jre/lib/security/krb5.conf"),
+    Cmd("RUN", "ln -sf /etc/krb5.conf /docker-java-home/jre/lib/security/krb5.conf")
 //    Cmd("COPY", "jssecacerts", "/opt/jdk/jre/lib/security/")
 //    Cmd("COPY", "jssecacerts", "/docker-java-home/jre/lib/security")
 

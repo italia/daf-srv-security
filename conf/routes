@@ -41,9 +41,10 @@ GET         /sso-manager/internal/retrivePwdFromToken                   controll
 
 POST        /sso-manager/managed/bi-open-login                          controllers.SSOController.biOpenLogin
 
-POST        /impala/createTableFromFile/*path                           controllers.ImpalaController.createImpalaTableFromFile(path:String, schemaName:String, tableName:String)
-POST        /impala/createGrant                                         controllers.ImpalaController.createImpalaGrant(schemaName:String, tableName:String)
-POST        /hdfs/setACL/*path                                          controllers.HdfsController.setPermissionRecursively(path:String, groupName:String, groupType:String, permission:String)
+PUT        /impala/createTableFromFile/*path                            controllers.ImpalaController.createTableFromFile(path:String, schemaName:String, tableName:String)
+PUT        /impala/createGrant                                          controllers.ImpalaController.createGrant(schemaName:String, tableName:String)
+PUT        /impala/refreshTable                                         controllers.ImpalaController.refreshTable(schemaName:String, tableName:String)
+PUT        /hdfs/setACL/*path                                           controllers.HdfsController.setPermissionRecursively(path:String, groupName:String, groupType:String, permission:String)
 
 GET         /hdfs/retriveACL/*path                                      controllers.HdfsController.retriveACL(path:String)
 

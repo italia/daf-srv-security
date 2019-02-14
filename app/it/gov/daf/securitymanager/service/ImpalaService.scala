@@ -195,13 +195,19 @@ class ImpalaService @Inject()(implicit val cacheWrapper:CacheWrapper){
   def invalidateMetadata():Boolean = executeDDL("INVALIDATE METADATA",true)
 
 
-  def createTableFromParquet(path:String, fileName:String, schemaName:String, tableName:String) = {
+  def createTableFromParquet(path:String, fileName:String, schemaName:String, tableName:String):Boolean = {
 
     val ddl = s"""CREATE EXTERNAL TABLE $schemaName.$tableName LIKE PARQUET '$path/$fileName' STORED AS PARQUET
                   LOCATION '$path'"""
 
     executeDDL(ddl,true)
 
+  }
+
+  def refreshTable(schemaName:String, tableName:String):Boolean= {
+
+    val ddl = s"""REFRESH $schemaName.$tableName"""
+    executeDDL(ddl)
   }
 
   private def executeHiveDDLs(query:Seq[String]):Seq[Boolean]={

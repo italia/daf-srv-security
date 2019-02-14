@@ -15,8 +15,6 @@ import play.api.mvc._
 import scala.concurrent.Future
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
-import scala.util.{Failure, Success, Try}
-
 
 
 class HdfsController @Inject()(ws: WSClient, webHDFSApiClient:WebHDFSApiClient, webHDFSApiProxy:WebHDFSApiProxy, profilingService: ProfilingService) extends Controller {
@@ -29,6 +27,8 @@ class HdfsController @Inject()(ws: WSClient, webHDFSApiClient:WebHDFSApiClient, 
 
   def setPermissionRecursively(path:String, groupName:String, groupType:String, permission:String) = Action.async { implicit request =>
     execInContext[Future[Result]]("setPermissionRecursively") { () =>
+
+      logger.debug("Request:" + request)
 
       profilingService.setDatasetHDFSPermission( path, groupName, groupType, permission ).map {
         case Right(r) => Ok(s"""{"message":"${r.message.getOrElse("")}"}""")

@@ -19,7 +19,7 @@ class ImpalaController @Inject()(webHDFSApiClient:WebHDFSApiClient,impalaService
   private val logger = Logger(this.getClass.getName)
 
 
-  def createImpalaTableFromFile(path:String, schemaName:String, tableName:String) = Action.async { implicit request =>
+  def createTableFromFile(path:String, schemaName:String, tableName:String) = Action.async { implicit request =>
     execInContext[Future[Result]]("createImpalaTableFromFile") { () =>
 
       val absPath="/"+path
@@ -36,7 +36,7 @@ class ImpalaController @Inject()(webHDFSApiClient:WebHDFSApiClient,impalaService
     }
   }
 
-  def createImpalaGrant(schemaName:String, tableName:String) = Action { implicit request =>
+  def createGrant(schemaName:String, tableName:String) = Action { implicit request =>
 
     execInContext[Result]("createImpalaGrant") { () =>
 
@@ -53,6 +53,19 @@ class ImpalaController @Inject()(webHDFSApiClient:WebHDFSApiClient,impalaService
       impalaService.createImpalaGrant(schemaName+"."+tableName, userName, "rwx", true, true) match {
         case Right(r) => Ok(r.toString)
         case Left(l) => InternalServerError(l.toString)
+      }
+    }
+
+  }
+
+
+  def refreshTable(schemaName:String, tableName:String) = Action { implicit request =>
+
+    execInContext[Result]("refreshTable") { () =>
+
+      Try{impalaService.refreshTable(schemaName,tableName)} match {
+        case Success(_) => Ok(s"""{"message":"table refreshed"}""")
+        case Failure(e) => Logger.error("error in refreshTable"+e.getMessage, e); InternalServerError(s"""{"message":"${e.getMessage}}""")
       }
     }
 
