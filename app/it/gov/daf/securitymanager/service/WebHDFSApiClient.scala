@@ -108,7 +108,7 @@ class WebHDFSApiClient @Inject()(secInvokeManager: SecuredInvocationManager, web
   }
 
 
-  private def handleServiceCall(serviceInvoke:(String,WSClient)=> Future[WSResponse], handleJson:(RestServiceResponse)=> Either[RestServiceResponse,JsValue] )={
+  private def handleServiceCall[A](serviceInvoke:(String,WSClient)=> Future[WSResponse], handleJson:(RestServiceResponse)=> Either[RestServiceResponse,A] )={
 
     val loginInfo = readLoginInfo(LoginClientLocal.HADOOP)
 
@@ -137,6 +137,30 @@ class WebHDFSApiClient @Inject()(secInvokeManager: SecuredInvocationManager, web
     }
 
     handleServiceCall(serviceInvoke,handleJson)
+
+  }
+
+
+  def getParquetFileNameInFolder(path:String):Future[Either[RestServiceResponse,Option[String]]] = {
+
+    Logger.logger.debug("listFolderContent on path: " + path)
+
+
+    def serviceInvoke(cookie: String, wsClient: WSClient): Future[WSResponse] = {
+      wsClient.url(s"$HADOOP_URL/webhdfs/v1/$path?op=LISTSTATUS").withHeaders("Cookie" -> cookie).get
+    }
+
+    def handleJson(resp:RestServiceResponse):Either[RestServiceResponse,Option[String]] = {
+
+      (resp.jsValue \ "FileStatuses" \ "FileStatus" ).validate[Seq[JsObject]] match {
+        case s:JsSuccess[Seq[JsObject]] => Right{
+                                                  s.value.map(w => (w \ "pathSuffix").as[String]).find(_.endsWith(".parquet"))
+                                                }     //find(w => (w \ "pathSuffix").as[String].endsWith(".parquet") \ "pathSuffix").as[String] )
+        case f:JsError => Left(resp)
+      }
+    }
+
+    handleServiceCall(serviceInvoke, handleJson)
 
   }
 

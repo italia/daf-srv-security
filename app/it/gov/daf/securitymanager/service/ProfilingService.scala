@@ -21,7 +21,7 @@ import security_manager.yaml.BodyReads._
 import scala.util.{Left, Try}
 
 @Singleton
-class ProfilingService @Inject()(webHDFSApiProxy:WebHDFSApiProxy,impalaService:ImpalaService,integrationService: IntegrationService, apiClientIPA: ApiClientIPA,supersetApiClient: SupersetApiClient){
+class ProfilingService @Inject()(webHDFSApiProxy:WebHDFSApiProxy, impalaService:ImpalaService, integrationService: IntegrationService, apiClientIPA: ApiClientIPA, supersetApiClient: SupersetApiClient){
 
 
   private val logger = Logger(this.getClass.getName)
@@ -125,27 +125,35 @@ class ProfilingService @Inject()(webHDFSApiProxy:WebHDFSApiProxy,impalaService:I
 
   }
 
-  private def setDatasetHDFSPermission(datasetPath:String, isDirectory:Boolean, setHdfsPerm:(String,Boolean)=>Future[Either[Error,Success]]) :Future[Either[Error,Success]] = {
+  def setDatasetHDFSPermission(datasetPath:String, groupName:String, groupType:String, permission:String) :Future[Either[Error,Success]] = {
 
     Logger.debug(s"setDatasetHDFSPermission datasetPath: $datasetPath")
 
+    def setHdfsPerm:(String,Boolean)=>Future[Either[Error,Success]] = createHDFSPermission(_, _, groupName, groupType, permission)
+
+    setDatasetHDFSWithPermission(datasetPath, true, setHdfsPerm)
+
+  }
+
+  private def setDatasetHDFSWithPermission(datasetPath:String, isDirectory:Boolean, setHdfsPerm:(String,Boolean)=>Future[Either[Error,Success]]):Future[Either[Error,Success]]= {
+
     val res = for {
 
-      a <- EitherT ( setHdfsPerm(datasetPath, isDirectory) )
+      _ <- EitherT(setHdfsPerm(datasetPath, isDirectory))
 
-      lista <- EitherT( listHDFSFolder(datasetPath) )
+      lista <- EitherT(listHDFSFolder(datasetPath))
 
       v <- EitherT(
-          lista.foldLeft[Future[Either[Error,Success]]](Future.successful(Right{Success(Some(""), Some(""))})) { (a, listElem) =>
-            a flatMap {
-              case Right(r) =>  if (listElem._2) setDatasetHDFSPermission(s"$datasetPath/${listElem._1}", listElem._2, setHdfsPerm)
-                                else setHdfsPerm(s"$datasetPath/${listElem._1}",listElem._2)
-              case Left(l) => Future.successful( Left(l) )
-            }
+        lista.foldLeft[Future[Either[Error, Success]]](Future.successful(Right {Success(Some(""), Some(""))})) { (a, listElem) =>
+          a flatMap {
+            case Right(r) =>  if (listElem._2) setDatasetHDFSWithPermission(s"$datasetPath/${listElem._1}", listElem._2, setHdfsPerm)
+            else setHdfsPerm(s"$datasetPath/${listElem._1}", listElem._2)
+            case Left(l) => Future.successful(Left(l))
           }
+        }
       )
 
-    }yield v
+    } yield v
 
     res.value
   }
@@ -178,19 +186,17 @@ class ProfilingService @Inject()(webHDFSApiProxy:WebHDFSApiProxy,impalaService:I
 
   def setACLPermission(datasetName:String, groupName:String, groupType:String, permission:String) :Future[Either[Error,Success]] = {
 
-    val createPermission:(String,Boolean)=>Future[Either[Error,Success]] = createHDFSPermission(_, _, groupName, groupType, permission)
-
     val result = for {
 
-      test <- stepOverF( verifyPermissionString(permission) )
+      _ <- stepOverF( verifyPermissionString(permission) )
       info <- stepOverF( getDatasetInfo(datasetName) ); (datasetPath,owner,ownerOrg)=info
 
-      j0 <- stepOverF( testUser(owner) )
-      j1 <- stepOverF( testIfUserCanGivePermission(ownerOrg,groupName) )
+      _ <- stepOverF( testUser(owner) )
+      _ <- stepOverF( testIfUserCanGivePermission(ownerOrg,groupName) )
 
       k <- stepOverF( deletePermissionIfPresent(datasetName, groupName, groupType) )
 
-      a <- step( setDatasetHDFSPermission(datasetPath, true, createPermission) )
+      a <- step( setDatasetHDFSPermission(datasetPath, groupName, groupType, permission) )
       b <- step( a, createImpalaGrant(datasetPath, groupName, groupType, permission) )
 
       c <- step( b, createSupersetTable(datasetPath, groupName))
@@ -297,7 +303,7 @@ class ProfilingService @Inject()(webHDFSApiProxy:WebHDFSApiProxy,impalaService:I
     val result = for {
 
       info <- stepOverF( getDatasetInfo(datasetName) ); (datasetPath,owner,ownerOrg)=info
-      a <- step( setDatasetHDFSPermission(datasetPath, true, deletePermission) )
+      a <- step( setDatasetHDFSWithPermission(datasetPath, true, deletePermission) )
 
       b <- step(a, revokeImpalaGrant(datasetPath, groupName, groupType) )
 
