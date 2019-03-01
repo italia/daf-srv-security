@@ -45,7 +45,7 @@ PUT        /impala/createTableFromFile/*path                            controll
 PUT        /impala/createGrant                                          controllers.ImpalaController.createGrant(schemaName:String, tableName:String)
 PUT        /impala/refreshTable                                         controllers.ImpalaController.refreshTable(schemaName:String, tableName:String)
 PUT        /hdfs/setACL/*path                                           controllers.HdfsController.setPermissionRecursively(path:String, groupName:String, groupType:String, permission:String)
-
+GET         /hdfs/checkFile/*path                                       controllers.HdfsController.checkFileExistence(path:String)
 GET         /hdfs/retriveACL/*path                                      controllers.HdfsController.retriveACL(path:String)
 
 GET         /hdfs/proxy/*path                                           controllers.HdfsController.callWebHdfs(path:String)
