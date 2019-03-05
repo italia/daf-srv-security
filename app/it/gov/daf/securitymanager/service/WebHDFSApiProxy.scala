@@ -31,6 +31,8 @@ class WebHDFSApiProxy @Inject()(secInvokeManager: SecuredInvocationManager, impl
 
   def switchEndpoint():Unit = synchronized {
 
+    logger.info("in switchEndpoint")
+
     if( HADOOP_URLS(1).length > 0 && ((new Date).getTime-endpointSwitchDate.getTime) > 5000 ) {
       endpointSwitchDate = new Date
       hadoopUrlIdx = !hadoopUrlIdx
@@ -47,9 +49,9 @@ class WebHDFSApiProxy @Inject()(secInvokeManager: SecuredInvocationManager, impl
     val loginInfo = loginInfoParam.getOrElse(readLoginInfo(LoginClientLocal.HADOOP))
 
     secInvokeManager.manageRestServiceCallWithResp(loginInfo, serviceInvoke, 200,201,307,400,401,403,404).map {
-      case Right(resp) => if(resp.httpCode<400) Right(resp)
-                          else Left(resp)
-      case Left(l) =>  Left(RestServiceResponse(JsString(l),500,None))
+      case Right(resp) if resp.httpCode<400   => Right(resp)
+      case Right(resp)                        => Left(resp)
+      case Left(l)                            => Left(RestServiceResponse(JsString(l),500,None))
     }
   }
 
@@ -62,9 +64,7 @@ class WebHDFSApiProxy @Inject()(secInvokeManager: SecuredInvocationManager, impl
     def serviceInvoke(cookie: String, wsClient: WSClient): Future[WSResponse] = {
       val prmList = params.toList
       logger.debug(s"---->$prmList")
-      val response = wsClient.url(s"${HADOOP_URLS(hadoopUrlIdx)}/webhdfs/v1/$path").withHeaders("Cookie" -> cookie).withFollowRedirects(false).withMethod(httpMethod).withQueryString(prmList:_*).execute
-      logger.debug(s"callHdfsService Response: $response")
-      response
+      wsClient.url(s"${HADOOP_URLS(hadoopUrlIdx)}/webhdfs/v1/$path").withHeaders("Cookie" -> cookie).withFollowRedirects(false).withMethod(httpMethod).withQueryString(prmList:_*).execute
     }
 
     handleServiceCall(serviceInvoke,loginInfoParam)

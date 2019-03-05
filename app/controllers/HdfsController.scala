@@ -38,6 +38,20 @@ class HdfsController @Inject()(ws: WSClient, webHDFSApiClient:WebHDFSApiClient, 
     }
   }
 
+  def checkFileExistence(path:String) = Action.async { implicit request =>
+    execInContext[Future[Result]]("checkFileExistence") { () =>
+
+      logger.debug("Request:" + request)
+
+      webHDFSApiClient.checkFileExistence(path:String).map {
+        case Right(r) => Ok(r)
+        case Left(l) => new Status(l.httpCode).apply(l.jsValue.toString())
+      }
+
+    }
+  }
+
+
 
   def retriveACL(path:String) = Action.async { implicit request =>
     execInContext[Future[Result]]("retriveACL") { () =>
@@ -62,6 +76,7 @@ class HdfsController @Inject()(ws: WSClient, webHDFSApiClient:WebHDFSApiClient, 
       def handleRequest(isHaRequest: Boolean):Future[Result] = webHDFSApiProxy.callHdfsService(request.method, path, queryString, None).flatMap {
 
         case Right(r) =>
+                        logger.debug("right")
                         if( r.httpCode == 307 && r.locationHeader.nonEmpty)
                         request.method match{
                           case "GET" => callGetFileService(r.locationHeader.get)
@@ -71,6 +86,7 @@ class HdfsController @Inject()(ws: WSClient, webHDFSApiClient:WebHDFSApiClient, 
 
         case Left(l) =>
                         val excp = (l.jsValue \ "RemoteException" \ "exception").asOpt[String]
+                        logger.debug("left exception: " + excp)
                         if( l.httpCode == 403 && isHaRequest && excp.nonEmpty && excp.get.equals("StandbyException") ){
                           webHDFSApiProxy.switchEndpoint()
                           handleRequest(false)
