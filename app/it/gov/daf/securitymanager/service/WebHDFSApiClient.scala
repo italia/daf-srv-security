@@ -81,11 +81,9 @@ class WebHDFSApiClient @Inject()(secInvokeManager: SecuredInvocationManager, web
     val adminLoginInfo =  Some(new LoginInfo(ConfigReader.hdfsUser, ConfigReader.hdfsUserPwd, LoginClientLocal.HADOOP ))
 
     val res = for {
-      r1 <- EitherT( webHDFSApiProxy.callHdfsService("PUT", s"uploads/$userId", Map("op" -> "MKDIRS", "permission" -> "700"),adminLoginInfo) )
-      r2 <- EitherT( webHDFSApiProxy.callHdfsService("PUT", s"uploads/$userId", Map("op" -> "MODIFYACLENTRIES", "aclspec" -> s"user:$userId:rwx"),adminLoginInfo) )
-      //op=SETACL&aclspec=user:impala:rwx,user:hive:rwx,user::rw-,group::r--,other::r--
-      //r2 <- EitherT( webHDFSApiProxy.callHdfsService("PUT", s"uploads/$userId", Map("op" -> "SETOWNER", "owner" -> userId, "group" -> userId),adminLoginInfo) )
-    }yield r2
+      _ <- EitherT( webHDFSApiProxy.callHdfsService("PUT", s"uploads/$userId", Map("op" -> "MKDIRS", "permission" -> "700"),adminLoginInfo) )
+      r <- EitherT( webHDFSApiProxy.callHdfsService("PUT", s"uploads/$userId", Map("op" -> "MODIFYACLENTRIES", "aclspec" -> s"user:$userId:rwx"),adminLoginInfo) )
+    }yield r
 
     res.value map {
       case Right(r) => Right( Success(Some("Home dir created"), Some("ok")) )
@@ -107,7 +105,7 @@ class WebHDFSApiClient @Inject()(secInvokeManager: SecuredInvocationManager, web
     }
   }
 
-
+  /*
   private def handleServiceCall[A](serviceInvoke:(String,WSClient)=> Future[WSResponse], handleJson:(RestServiceResponse)=> Either[RestServiceResponse,A] )={
 
     val loginInfo = readLoginInfo(LoginClientLocal.HADOOP)
@@ -139,13 +137,56 @@ class WebHDFSApiClient @Inject()(secInvokeManager: SecuredInvocationManager, web
     handleServiceCall(serviceInvoke,handleJson)
 
   }
+*/
 
+  def getAclStatus(path:String):Future[Either[RestServiceResponse,JsValue]] = {
+
+    Logger.logger.debug("getAclStatus on path: " + path)
+
+
+    webHDFSApiProxy.callHdfsService("GET", path, Map("op" -> "GETACLSTATUS"), None ).map{
+
+      case Right(resp) => (resp.jsValue \ "AclStatus").validate[JsObject] match {
+        case JsSuccess(s,v) => Right(resp.jsValue)
+        case JsError(e) => Left(resp)
+      }
+
+      case Left(l) => Left(l)
+    }
+
+  }
+
+
+  def checkFileExistence(path:String):Future[Either[RestServiceResponse,JsValue]] = {
+
+    Logger.logger.debug("checkDir on path: " + path)
+
+
+    webHDFSApiProxy.callHdfsService("GET", path, Map("op" -> "GETFILESTATUS"), None ).map{
+
+      case Right(r) => Right(r.jsValue)
+      case Left(l) if l.httpCode==404 => Right(l.jsValue)
+      case Left(l) => Left(l)
+    }
+
+  }
 
   def getParquetFileNameInFolder(path:String):Future[Either[RestServiceResponse,Option[String]]] = {
 
     Logger.logger.debug("listFolderContent on path: " + path)
 
+    webHDFSApiProxy.callHdfsService("GET", path, Map("op" -> "LISTSTATUS"), None ).map{
 
+      case Right(resp) =>  (resp.jsValue \ "FileStatuses" \ "FileStatus" ).validate[Seq[JsObject]] match {
+        case s:JsSuccess[Seq[JsObject]] => Right{ s.value.map(w => (w \ "pathSuffix").as[String]).find(_.endsWith(".parquet")) }
+        case f:JsError => Left(resp)
+      }
+
+      case Left(l) => Left(l)
+    }
+
+
+    /*
     def serviceInvoke(cookie: String, wsClient: WSClient): Future[WSResponse] = {
       wsClient.url(s"$HADOOP_URL/webhdfs/v1/$path?op=LISTSTATUS").withHeaders("Cookie" -> cookie).get
     }
@@ -155,12 +196,12 @@ class WebHDFSApiClient @Inject()(secInvokeManager: SecuredInvocationManager, web
       (resp.jsValue \ "FileStatuses" \ "FileStatus" ).validate[Seq[JsObject]] match {
         case s:JsSuccess[Seq[JsObject]] => Right{
                                                   s.value.map(w => (w \ "pathSuffix").as[String]).find(_.endsWith(".parquet"))
-                                                }     //find(w => (w \ "pathSuffix").as[String].endsWith(".parquet") \ "pathSuffix").as[String] )
+                                                }
         case f:JsError => Left(resp)
       }
     }
 
-    handleServiceCall(serviceInvoke, handleJson)
+    handleServiceCall(serviceInvoke, handleJson)*/
 
   }
 
