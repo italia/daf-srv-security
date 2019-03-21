@@ -37,7 +37,7 @@ object BasicAuthToSPNEGO {
       else "./script/kb_init.sh"
 
 
-      val commandStr = s"timeout 5 $scriptName $usrName $serviceUrl"  // Process should hang: command timeout needed
+      val commandStr = s"timeout 10 $scriptName $usrName $serviceUrl"  // Process should hang: command timeout needed
       Logger.logger.debug(s"Launching $commandStr")
       val pb = Process(commandStr)
 
