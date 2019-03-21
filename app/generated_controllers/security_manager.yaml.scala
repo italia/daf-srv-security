@@ -46,7 +46,7 @@ import scala.collection.immutable.StringLike
 
 package security_manager.yaml {
     // ----- Start of unmanaged code area for package Security_managerYaml
-                                                                                        
+                                                                                            
     // ----- End of unmanaged code area for package Security_managerYaml
     class Security_managerYaml @Inject() (
         // ----- Start of unmanaged code area for injections Security_managerYaml
@@ -121,7 +121,7 @@ package security_manager.yaml {
             execInContext[Future[ResetpwdconfirmType[T] forSome { type T }]] ("resetpwdconfirm"){ () =>
               registrationService.resetPassword(resetinfo.token, resetinfo.newpwd) flatMap {
                 case Right(success) => Resetpwdconfirm200(success)
-                case Left(err) => Resetpwdconfirm500(err)
+                case Left(err) => if(err.code.get == 0)Resetpwdconfirm500(err) else Resetpwdconfirm403(err)
               }
             }
             // ----- End of unmanaged code area for action  Security_managerYaml.resetpwdconfirm
