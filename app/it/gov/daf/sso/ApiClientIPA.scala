@@ -820,7 +820,7 @@ class ApiClientIPA @Inject()(secInvokeManager:SecuredInvocationManager,loginClie
       val tempoResult = (json \ "result") \"result"
 
       if(count==0)
-        Left( Error(Option(1),Some("No user found"),None) )
+        Left( Error(Option(403),Some("Richiesta non valida"),None) )
       else if( tempoResult.isInstanceOf[JsUndefined] )
         Left( Error(Option(0),Some(readIpaErrorMessage(json)),None) )
       else {
