@@ -25,7 +25,7 @@ object MongoService {
   private val RESETPWD_COLLECTION_NAME = "ResetPwdRequests"
   private val CATALOG_COLLECTION_NAME = "catalog_test"
   private val PRE_REGISTRATION_TTL = 60*60*2
-  private val RESET_PWD_TTL = 60*60*2
+  private val RESET_PWD_TTL = 600
 
   private val mongoClient = MongoClient( server, List(credentials) )
 
