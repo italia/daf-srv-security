@@ -311,6 +311,10 @@ paths:
           description: Success
           schema:
             $ref: '#/definitions/Success'
+        403:
+          description: Error Message
+          schema:
+            $ref: '#/definitions/Error'
         500:
           description: Error Message
           schema:
@@ -335,7 +339,7 @@ paths:
           description: Success
           schema:
             $ref: '#/definitions/Success'
-        500:
+        403:
           description: Error Message
           schema:
             $ref: '#/definitions/Error'
