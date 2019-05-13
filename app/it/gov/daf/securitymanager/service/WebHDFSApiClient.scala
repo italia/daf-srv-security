@@ -80,15 +80,27 @@ class WebHDFSApiClient @Inject()(secInvokeManager: SecuredInvocationManager, web
 
     val adminLoginInfo =  Some(new LoginInfo(ConfigReader.hdfsUser, ConfigReader.hdfsUserPwd, LoginClientLocal.HADOOP ))
 
-    val res = for {
-      _ <- EitherT( webHDFSApiProxy.callHdfsService("PUT", s"uploads/$userId", Map("op" -> "MKDIRS", "permission" -> "700"),adminLoginInfo) )
-      r <- EitherT( webHDFSApiProxy.callHdfsService("PUT", s"uploads/$userId", Map("op" -> "MODIFYACLENTRIES", "aclspec" -> s"user:$userId:rwx"),adminLoginInfo) )
-    }yield r
+    def handleRequest(isHaRequest: Boolean): Future[Either[Error, Success]] = {
+      val res = for {
+        _ <- EitherT( webHDFSApiProxy.callHdfsService("PUT", s"uploads/$userId", Map("op" -> "MKDIRS", "permission" -> "700"),adminLoginInfo) )
+        r <- EitherT( webHDFSApiProxy.callHdfsService("PUT", s"uploads/$userId", Map("op" -> "MODIFYACLENTRIES", "aclspec" -> s"user:$userId:rwx"),adminLoginInfo) )
+      }yield r
 
-    res.value map {
-      case Right(r) => Right( Success(Some("Home dir created"), Some("ok")) )
-      case Left(l) => Left( Error(Option(0), Some(l.jsValue.toString()), None) )
+      res.value.flatMap {
+        case Right(r) => Future.successful( Right( Success(Some("Home dir createdd"), Some("ok")) ) )
+        case Left(l) =>
+          val excp = (l.jsValue \ "RemoteException" \ "exception").asOpt[String]
+          Logger.logger.debug("left exception: " + excp)
+          if( l.httpCode == 403 && isHaRequest && excp.nonEmpty && excp.get.equals("StandbyException") ){
+            webHDFSApiProxy.switchEndpoint()
+            handleRequest(false)
+          } else {
+            Future.successful( Left(Error(Option(0), Some(l.jsValue.toString()), None) ) )
+          }
+      }
     }
+
+    handleRequest(true)
   }
 
   def deleteHomeDir(userId:String):Future[Either[Error,Success]] = {
