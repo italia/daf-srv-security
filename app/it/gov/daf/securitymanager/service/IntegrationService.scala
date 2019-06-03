@@ -31,7 +31,7 @@ class IntegrationService @Inject()(apiClientIPA:ApiClientIPA, supersetApiClient:
                                           toOrgMail(groupCn),
                                           toRefOrgUserName(groupCn),
                                           None,
-                                          Option(Seq(Viewer.toString+groupCn)),
+                                          Option(Seq(Admin.toString+groupCn)),
                                           Option(dafOrg.predefinedUserPwd),
                                           None,
                                           Option(Seq(dafOrg.groupCn)))
