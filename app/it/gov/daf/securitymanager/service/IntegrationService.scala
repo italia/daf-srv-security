@@ -54,7 +54,7 @@ class IntegrationService @Inject()(apiClientIPA:ApiClientIPA, supersetApiClient:
       //e <- step( c, ckanApiClient.createOrganizationAsAdmin(groupCn) ) non si usa + ckan
       e <- step( c, ckanApiClient.createOrganizationInGeoCkanAsAdmin(dafOrg) )
       //f <- EitherT( grafanaApiClient.createOrganization(groupCn) ) TODO da riabilitare
-      g <- stepOver( e, addUserToOrganization(groupCn,predefinedOrgIpaUser.uid) )
+      g <- stepOver( e, addUserToOrganization(groupCn,predefinedOrgIpaUser.uid, true) )
       //g <- EitherT( grafanaApiClient.addUserInOrganization(groupCn,toUserName(groupCn)) )
     } yield g
 
@@ -285,17 +285,19 @@ class IntegrationService @Inject()(apiClientIPA:ApiClientIPA, supersetApiClient:
   }*/
 
 
-  def addUserToOrganization(groupCn:String, userName:String):Future[Either[Error,Success]] = {
+  def addUserToOrganization(groupCn:String, userName:String, isRefUser: Boolean = false):Future[Either[Error,Success]] = {
 
     logger.info("addUserToOrganization")
 
-    val orgViewerRoleName= RoleGroup(Viewer.toString+groupCn).toString
+//    val orgViewerRoleName= RoleGroup(Viewer.toString+groupCn).toString
+    val orgRoleName = if (isRefUser) RoleGroup(Admin.toString+groupCn).toString
+                             else           RoleGroup(Viewer.toString+groupCn).toString
 
     val result = for {
       a <- stepOver( apiClientIPA.testIfIsOrganization(groupCn) )
       user <- stepOverF( apiClientIPA.findUser(Left(userName)) )
       a1<-  stepOver( registrationService.raiseErrorIfUserAlreadyBelongsToThisGroup(user,groupCn) )
-      a2 <- step( apiClientIPA.addMemberToGroups(Some(Seq(groupCn,orgViewerRoleName)),User(userName)) )
+      a2 <- step( apiClientIPA.addMemberToGroups(Some(Seq(groupCn,orgRoleName)),User(userName)) )
       supersetUserInfo <- stepOverF( a2, supersetApiClient.findUser(userName) )
       roleIds <- stepOverF( a2, supersetApiClient.findRoleIds(toSupersetRole(groupCn)::supersetUserInfo._2.toList:_*) )
 
