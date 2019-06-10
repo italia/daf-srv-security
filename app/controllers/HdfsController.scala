@@ -79,8 +79,9 @@ class HdfsController @Inject()(ws: WSClient, webHDFSApiClient:WebHDFSApiClient, 
                         logger.debug("right")
                         if( r.httpCode == 307 && r.locationHeader.nonEmpty)
                         request.method match{
-                          case "GET" => callGetFileService(r.locationHeader.get)
-                          case "PUT" => callPutFileService(r.locationHeader.get,request.body)
+                          case "GET"  => callGetFileService(r.locationHeader.get)
+                          case "PUT"  => callPutFileService(r.locationHeader.get,request.body)
+                          case "POST" => callPostFileService(r.locationHeader.get, request.body)
                         }else
                           Future.successful{Ok(r.jsValue)}
 
@@ -119,6 +120,24 @@ class HdfsController @Inject()(ws: WSClient, webHDFSApiClient:WebHDFSApiClient, 
           Status(resp.status).apply(resp.body)
       }
 
+  }
+
+  private def callPostFileService(location: String, requestBody: SourceWrapper): Future[Result] = {
+
+    logger.debug("callPostFileService")
+
+    ws.url(location)
+      .withBody(StreamedBody(requestBody.source))
+      .execute("POST")
+      .map{ resp =>
+
+        logger.debug("exiting callPostFileService")
+
+        if(resp.status < 400)
+          Ok("File succesfully uploaded")
+        else
+          Status(resp.status).apply(resp.body)
+      }
   }
 
 
