@@ -47,12 +47,18 @@ class KyloApiClient @Inject()(wSClient: WSClient){
         Logger.logger.debug("RESPONSE:"+response)
         Left(Error(Option(0), Some("Error in during kylo category creation: bad http code" + response.status), None))
       }else{
-        Logger.logger.debug("RESPONSE:"+response.json)
-        val result = response.json \ "id"
-        if( result.isInstanceOf[JsUndefined] )
-          Left( Error(Option(0),Some("Error in during kylo category creation"),None) )
-        else
-          Right( Success(Some("Category created"), Some("ok")) )
+//        Logger.logger.debug("RESPONSE:"+response.json)
+        Logger.logger.debug("RESPONSE:"+response)
+        if(response.body.isEmpty) {
+          Logger.logger.debug("Category alredy exist")
+          Right( Success(Some("Category alredy exist"), Some("ok")) )
+        } else {
+          val result = response.json \ "id"
+          if( result.isInstanceOf[JsUndefined] )
+            Left( Error(Option(0),Some("Error in during kylo category creation"),None) )
+          else
+            Right( Success(Some("Category created"), Some("ok")) )
+        }
       }
 
     }
